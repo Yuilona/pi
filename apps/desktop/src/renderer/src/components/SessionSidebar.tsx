@@ -29,10 +29,19 @@ interface SessionSidebarProps {
 	currentCwd: string;
 	onSelect: (path: string) => void;
 	onNew: () => void;
+	onNewInProject: (cwd: string) => void;
 	onDelete: (path: string) => void;
 }
 
-export function SessionSidebar({ sessions, activePath, currentCwd, onSelect, onNew, onDelete }: SessionSidebarProps) {
+export function SessionSidebar({
+	sessions,
+	activePath,
+	currentCwd,
+	onSelect,
+	onNew,
+	onNewInProject,
+	onDelete,
+}: SessionSidebarProps) {
 	// Remembered project order, so the list stays put across refreshes (deleting a chat must NOT reshuffle
 	// projects — you should never have to hunt for where a project jumped to).
 	const orderRef = useRef<string[]>([]);
@@ -78,6 +87,7 @@ export function SessionSidebar({ sessions, activePath, currentCwd, onSelect, onN
 						isCurrent={g.cwd === currentCwd}
 						activePath={activePath}
 						onSelect={onSelect}
+						onNewInProject={onNewInProject}
 						onDelete={onDelete}
 					/>
 				))}
@@ -91,10 +101,11 @@ interface ProjectGroupProps {
 	isCurrent: boolean;
 	activePath?: string;
 	onSelect: (path: string) => void;
+	onNewInProject: (cwd: string) => void;
 	onDelete: (path: string) => void;
 }
 
-function ProjectGroup({ group, isCurrent, activePath, onSelect, onDelete }: ProjectGroupProps) {
+function ProjectGroup({ group, isCurrent, activePath, onSelect, onNewInProject, onDelete }: ProjectGroupProps) {
 	const [expanded, setExpanded] = useState(false);
 	const overflow = group.sessions.length - PINNED;
 	const visible = expanded ? group.sessions : group.sessions.slice(0, PINNED);
@@ -106,6 +117,14 @@ function ProjectGroup({ group, isCurrent, activePath, onSelect, onDelete }: Proj
 				<span className="sess-group-name">{group.project}</span>
 				{isCurrent && <span className="sess-group-cur">current</span>}
 				<span className="sess-group-count">{group.sessions.length}</span>
+				<button
+					type="button"
+					className="sess-group-add"
+					onClick={() => onNewInProject(group.cwd)}
+					title="New chat in this project"
+				>
+					<IconPlus />
+				</button>
 			</header>
 
 			{visible.map((s) => (

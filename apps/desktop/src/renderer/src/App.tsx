@@ -60,6 +60,7 @@ export function App() {
 	const [sidebarOpen, setSidebarOpen] = useState(true);
 	const [sessions, setSessions] = useState<SessionInfoDto[]>([]);
 	const [currentCwd, setCurrentCwd] = useState("");
+	const [appDir, setAppDir] = useState("");
 	const [sessionFile, setSessionFile] = useState<string | undefined>();
 	const [showThinking, setShowThinking] = useState(true);
 	const [expandTools, setExpandTools] = useState(() => localStorage.getItem("pi.expandTools") === "1");
@@ -87,6 +88,7 @@ export function App() {
 		setReady(s.hasModel);
 		setCwdLabel(prettyCwd(s.cwd));
 		setCurrentCwd(s.cwd);
+		setAppDir(s.appDir);
 		setModel(s.model);
 		setThinking(s.thinkingLevel);
 		setMode(s.mode);
@@ -141,12 +143,20 @@ export function App() {
 		[loadTranscript, refreshState, refreshSessions],
 	);
 
-	const newChat = useCallback(async () => {
-		setAttachments([]);
-		await reset();
-		await refreshState();
-		await refreshSessions();
-	}, [reset, refreshState, refreshSessions]);
+	// Start a fresh chat in a given directory: a project's cwd (per-project "+"), or the app dir for a
+	// general, no-project chat (the "Chats"/titlebar "+", Codex-style). Empty falls back to current cwd.
+	const newChatInCwd = useCallback(
+		async (cwd: string) => {
+			setAttachments([]);
+			if (cwd) await window.pi.newChatInCwd(cwd);
+			else await reset();
+			await loadTranscript();
+			await refreshState();
+			await refreshSessions();
+		},
+		[reset, loadTranscript, refreshState, refreshSessions],
+	);
+	const newChat = useCallback(() => newChatInCwd(appDir), [newChatInCwd, appDir]);
 
 	const deleteSession = useCallback(
 		async (path: string) => {
@@ -288,6 +298,7 @@ export function App() {
 						currentCwd={currentCwd}
 						onSelect={(p) => void openSession(p)}
 						onNew={() => void newChat()}
+						onNewInProject={(p) => void newChatInCwd(p)}
 						onDelete={(p) => void deleteSession(p)}
 					/>
 				)}

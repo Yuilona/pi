@@ -176,7 +176,12 @@ Goal: no hardcoded provider; the app uses pi's own config so any provider/custom
         compact "N% ctx ↑in ↓out [$cost]" in the composer bar, refreshed when a turn ends / session
         changes. New IPC `getStats`.
       • **Composer model switcher** — model pill + dropdown of ready models (id + provider) next to the
-        mode pill; reuses `listModels`/`setModel`. Verified all four via screenshots (light theme).
+        mode pill; reuses `listModels`/`setModel`; closes on outside-click / Escape. Verified via screenshots.
+- [x] **Per-project + and app-dir general chat** (Codex chat-mode parity): each project group header has a
+      hover "+" → new chat in THAT project's cwd; the "Chats"/titlebar "+" now start a chat in the app's
+      own dir (Electron `userData`, the "no specific project" bucket). New IPC `newChatInCwd(cwd)` →
+      `manager.setCwd(cwd)` (fresh session in that dir); `AppStateDto.appDir` exposes the app dir to the
+      renderer; `newChatInCwd` in App routes all new-chat entry points. Verified per-project "+" renders.
 
 ## Milestone M3 — Multi-provider settings UI  ✅ DONE (model picker / keys / custom endpoint)
 - [x] Settings slide-over (`SettingsPanel`): model picker over `listModels()` (975 grouped by provider,

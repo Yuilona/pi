@@ -34,6 +34,7 @@ export const IPC = {
 	getProxyConfig: "pi:getProxyConfig",
 	setProxyConfig: "pi:setProxyConfig",
 	getStats: "pi:getStats",
+	newChatInCwd: "pi:newChatInCwd",
 	// agent stream (main -> renderer, send)
 	event: "pi:event",
 	// approvals
@@ -209,6 +210,8 @@ export interface ProxyConfigDto {
 
 export interface AppStateDto {
 	cwd: string;
+	/** The app's own directory (Electron userData) — the "no specific project" home for general chats. */
+	appDir: string;
 	model?: ModelInfoDto;
 	thinkingLevel: ThinkingLevelDto;
 	mode: PermissionMode;
@@ -225,6 +228,8 @@ export interface PiApi {
 	// agent control
 	send(text: string, images?: ImageAttachmentDto[]): Promise<void>;
 	getStats(): Promise<UsageDto>;
+	/** Start a fresh chat in a specific directory (a project's cwd, or the app dir for a general chat). */
+	newChatInCwd(cwd: string): Promise<void>;
 	abort(): Promise<void>;
 	newSession(): Promise<void>;
 	setModel(provider: string, id: string): Promise<void>;

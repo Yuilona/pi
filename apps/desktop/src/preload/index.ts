@@ -20,6 +20,7 @@ import {
 const api: PiApi = {
 	send: (text: string, images?: ImageAttachmentDto[]) => ipcRenderer.invoke(IPC.send, text, images),
 	getStats: () => ipcRenderer.invoke(IPC.getStats),
+	newChatInCwd: (cwd: string) => ipcRenderer.invoke(IPC.newChatInCwd, cwd),
 	abort: () => ipcRenderer.invoke(IPC.abort),
 	newSession: () => ipcRenderer.invoke(IPC.newSession),
 	setModel: (provider: string, id: string) => ipcRenderer.invoke(IPC.setModel, provider, id),

@@ -11,7 +11,7 @@ import { AgentManager } from "./manager.js";
 import { detectEnvProxy, loadProxyConfig, setProxyConfig } from "./proxy.js";
 
 /** Wire the AgentManager to ipcMain and forward its events to the renderer window. */
-export function registerAgentBridge(getWindow: () => BrowserWindow | null, cwd: string): AgentManager {
+export function registerAgentBridge(getWindow: () => BrowserWindow | null, cwd: string, appDir: string): AgentManager {
 	// OS notification when work finishes or needs you — only when the window isn't already focused.
 	const notify = (title: string, body: string) => {
 		const win = getWindow();
@@ -34,6 +34,7 @@ export function registerAgentBridge(getWindow: () => BrowserWindow | null, cwd: 
 			notify("pi — approval needed", `Allow ${req.toolName}?`);
 		},
 		cwd,
+		appDir,
 	);
 	void manager.init();
 
@@ -43,6 +44,7 @@ export function registerAgentBridge(getWindow: () => BrowserWindow | null, cwd: 
 
 	ipcMain.handle(IPC.send, (_e, text: string, images?: ImageAttachmentDto[]) => manager.prompt(text, images));
 	ipcMain.handle(IPC.getStats, () => manager.getStats());
+	ipcMain.handle(IPC.newChatInCwd, (_e, dir: string) => manager.setCwd(dir));
 	ipcMain.handle(IPC.abort, () => manager.abort());
 	ipcMain.handle(IPC.newSession, () => manager.newSession());
 	ipcMain.handle(IPC.setModel, (_e, provider: string, id: string) => manager.setModel(provider, id));

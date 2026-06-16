@@ -97,7 +97,7 @@ app.whenReady().then(() => {
 	// Route outbound fetch through the saved proxy (if enabled) before the agent makes any request.
 	applyProxy(loadProxyConfig());
 	registerWindowControls();
-	manager = registerAgentBridge(() => mainWindow, app.getPath("home"));
+	manager = registerAgentBridge(() => mainWindow, app.getPath("home"), app.getPath("userData"));
 	mainWindow = createWindow();
 
 	app.on("activate", () => {

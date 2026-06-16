@@ -65,6 +65,7 @@ export class AgentManager {
 		private readonly onEvent: (e: IpcAgentEvent) => void,
 		private readonly onApprovalRequest: (req: ApprovalRequest) => void,
 		cwd: string,
+		private readonly appDir: string = cwd,
 	) {
 		this.cwd = cwd;
 		this.settings = SettingsManager.create(cwd);
@@ -409,6 +410,7 @@ export class AgentManager {
 	getState(): AppStateDto {
 		return {
 			cwd: this.cwd,
+			appDir: this.appDir,
 			model: this.currentModel,
 			thinkingLevel: this.thinkingLevel,
 			mode: this.mode,
