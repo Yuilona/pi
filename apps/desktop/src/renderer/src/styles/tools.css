@@ -1,0 +1,172 @@
+/* M2: diff view, bash card, and the tool-approval dialog. */
+
+/* ---- Diff (edit/write patches) ---- */
+.diff {
+	border-top: 1px solid var(--border);
+	font-family: var(--font-mono);
+	font-size: 12.5px;
+	line-height: 1.5;
+	max-height: 420px;
+	overflow: auto;
+}
+.dl {
+	padding: 0 var(--sp-6);
+	white-space: pre;
+}
+.dl.add {
+	background: var(--diff-add-bg);
+	color: var(--diff-add-fg);
+}
+.dl.del {
+	background: var(--diff-del-bg);
+	color: var(--diff-del-fg);
+}
+.dl.hunk {
+	color: var(--brand);
+	background: color-mix(in srgb, var(--brand) 7%, transparent);
+}
+.dl.meta {
+	color: var(--text-3);
+}
+.dl.ctx {
+	color: var(--text-2);
+}
+
+/* ---- Bash card ---- */
+.tool.bash {
+	background: var(--tool-pending);
+}
+.tool.bash.tool-success {
+	background: var(--tool-success);
+}
+.tool.bash.tool-error {
+	background: var(--tool-error);
+}
+.bash-head {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-4);
+	width: 100%;
+	background: transparent;
+	border: none;
+	padding: var(--sp-4) var(--sp-6);
+	text-align: left;
+}
+.bash-prompt {
+	color: var(--brand);
+	font-family: var(--font-mono);
+	font-weight: 700;
+	flex: 0 0 auto;
+}
+.bash-cmd {
+	flex: 1;
+	font-family: var(--font-mono);
+	font-size: 12.5px;
+	color: var(--text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.bash-out {
+	margin: 0;
+	padding: var(--sp-6);
+	border-top: 1px solid var(--border);
+	font-family: var(--font-mono);
+	font-size: var(--fs-code);
+	line-height: 1.5;
+	color: var(--text-2);
+	max-height: 360px;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+/* ---- Approval dialog ---- */
+.approval-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 50;
+	background: rgba(20, 20, 19, 0.4);
+	backdrop-filter: blur(3px);
+	animation: fade 0.16s var(--ease);
+}
+.approval {
+	position: fixed;
+	inset: 0;
+	z-index: 51;
+	display: grid;
+	place-items: center;
+	padding: var(--sp-12);
+}
+.approval-card {
+	width: min(560px, 92vw);
+	background: var(--surface);
+	border: 1px solid var(--border-strong);
+	border-radius: var(--r-xl);
+	box-shadow: var(--shadow-whisper-lg);
+	padding: var(--sp-12);
+	animation: popin 0.18s var(--ease);
+}
+@keyframes popin {
+	from {
+		transform: translateY(8px) scale(0.98);
+		opacity: 0;
+	}
+}
+.approval-head {
+	display: flex;
+	gap: var(--sp-6);
+	align-items: flex-start;
+	margin-bottom: var(--sp-8);
+}
+.approval-ic {
+	width: 38px;
+	height: 38px;
+	flex: 0 0 auto;
+	border-radius: var(--r-lg);
+	display: grid;
+	place-items: center;
+	background: color-mix(in srgb, var(--brand) 12%, transparent);
+	color: var(--brand);
+}
+.approval-title {
+	font-family: var(--font-serif);
+	font-weight: 500;
+	font-size: var(--fs-feature);
+	color: var(--text);
+}
+.approval-tool {
+	font-family: var(--font-mono);
+	font-size: 12px;
+	color: var(--text-3);
+	margin-top: 2px;
+	word-break: break-all;
+}
+.approval-pre {
+	margin: 0 0 var(--sp-8);
+	padding: var(--sp-6);
+	background: var(--bg);
+	border: 1px solid var(--border);
+	border-radius: var(--r-md);
+	font-family: var(--font-mono);
+	font-size: var(--fs-code);
+	line-height: 1.5;
+	color: var(--text);
+	max-height: 280px;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+.approval-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-5);
+}
+.approval-spacer {
+	flex: 1;
+}
+.kbd-hint {
+	font-size: 10.5px;
+	opacity: 0.7;
+	margin-left: var(--sp-3);
+}

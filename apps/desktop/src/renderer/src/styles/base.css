@@ -1,0 +1,285 @@
+/* Base + shared primitives. All values flow from tokens.css (DESIGN.md). */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+}
+
+body {
+	background: var(--bg);
+	color: var(--text);
+	font-family: var(--font-sans);
+	font-size: var(--fs-body);
+	line-height: var(--lh-relaxed);
+	font-synthesis-weight: none;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+	/* App chrome should not be text-selectable; content opts back in. */
+	user-select: none;
+	overflow: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5 {
+	font-family: var(--font-serif);
+	font-weight: 500; /* single-weight serif — DESIGN.md rule */
+	font-optical-sizing: auto;
+	color: var(--text);
+	margin: 0;
+	line-height: var(--lh-snug);
+	letter-spacing: -0.01em;
+}
+
+p {
+	margin: 0;
+}
+
+a {
+	color: var(--brand-coral);
+	text-decoration: none;
+}
+a:hover {
+	color: var(--brand);
+}
+
+code,
+kbd,
+pre {
+	font-family: var(--font-mono);
+	font-size: var(--fs-code);
+	letter-spacing: -0.32px;
+}
+
+button {
+	font-family: inherit;
+	cursor: pointer;
+}
+
+::selection {
+	background: rgba(201, 100, 66, 0.18);
+}
+
+/* ---- Warm, minimal scrollbars ---- */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--ring) transparent;
+}
+*::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+	background: var(--ring);
+	border-radius: var(--r-pill);
+	border: 3px solid transparent;
+	background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+	background: var(--ring-deep);
+	background-clip: padding-box;
+	border: 3px solid transparent;
+}
+
+/* ============================ App shell ============================ */
+.app {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	grid-template-rows: var(--titlebar-h) 1fr;
+	grid-template-areas: "titlebar titlebar" "sidebar main";
+	height: 100%;
+	background: var(--bg);
+}
+
+/* ============================ Titlebar ============================ */
+.titlebar {
+	grid-area: titlebar;
+	-webkit-app-region: drag;
+	display: flex;
+	align-items: center;
+	gap: var(--sp-6);
+	padding: 0 var(--sp-4) 0 var(--sp-10);
+	height: var(--titlebar-h);
+	border-bottom: 1px solid var(--border);
+	background: color-mix(in srgb, var(--bg) 80%, transparent);
+	backdrop-filter: saturate(1.2) blur(8px);
+}
+.titlebar .no-drag {
+	-webkit-app-region: no-drag;
+}
+
+.wordmark {
+	font-family: var(--font-serif);
+	font-weight: 500;
+	font-size: var(--fs-feature);
+	letter-spacing: 0.2px;
+	color: var(--text);
+	display: flex;
+	align-items: center;
+	gap: var(--sp-4);
+}
+.wordmark .dot {
+	width: 9px;
+	height: 9px;
+	border-radius: var(--r-pill);
+	background: var(--brand);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+.titlebar .spacer {
+	flex: 1;
+}
+
+/* ---- Working-dir chip ---- */
+.chip {
+	-webkit-app-region: no-drag;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--sp-3);
+	max-width: 360px;
+	padding: 5px var(--sp-6) 5px var(--sp-5);
+	border-radius: var(--r-pill);
+	background: var(--surface);
+	box-shadow: var(--shadow-ring);
+	color: var(--text-2);
+	font-size: var(--fs-caption);
+	transition:
+		box-shadow 0.18s var(--ease),
+		color 0.18s var(--ease);
+}
+.chip:hover {
+	box-shadow: var(--shadow-ring-deep);
+	color: var(--text);
+}
+.chip .path {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-family: var(--font-mono);
+	font-size: 12.5px;
+}
+
+/* ---- Icon buttons ---- */
+.icon-btn {
+	-webkit-app-region: no-drag;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	border: none;
+	border-radius: var(--r-md);
+	background: transparent;
+	color: var(--text-2);
+	transition:
+		background 0.16s var(--ease),
+		color 0.16s var(--ease);
+}
+.icon-btn:hover {
+	background: var(--surface-2);
+	color: var(--text);
+}
+
+/* ---- Window controls ---- */
+.winctl {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	margin-left: var(--sp-2);
+}
+.winctl .icon-btn:last-child:hover {
+	background: var(--error);
+	color: #fff;
+}
+
+/* ============================ Buttons ============================ */
+.btn {
+	-webkit-app-region: no-drag;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--sp-3);
+	border: none;
+	font-size: var(--fs-body);
+	font-weight: 500;
+	line-height: 1;
+	transition:
+		box-shadow 0.18s var(--ease),
+		background 0.18s var(--ease),
+		transform 0.06s var(--ease);
+}
+.btn:active {
+	transform: translateY(0.5px);
+}
+.btn-brand {
+	background: var(--brand);
+	color: var(--on-brand);
+	padding: 10px 18px;
+	border-radius: var(--r-lg);
+	box-shadow: 0 0 0 1px var(--brand);
+}
+.btn-brand:hover {
+	background: color-mix(in srgb, var(--brand) 92%, #000);
+}
+.btn-brand:disabled {
+	background: var(--surface-2);
+	color: var(--text-3);
+	box-shadow: var(--shadow-ring);
+	cursor: not-allowed;
+}
+.btn-sand {
+	background: var(--surface-2);
+	color: var(--text-strong);
+	padding: 0 12px 0 8px;
+	height: 34px;
+	border-radius: var(--r-md);
+	box-shadow: var(--shadow-ring);
+}
+.btn-sand:hover {
+	box-shadow: var(--shadow-ring-deep);
+}
+.btn-ghost {
+	background: transparent;
+	color: var(--text-2);
+	padding: 8px 12px;
+	border-radius: var(--r-md);
+}
+.btn-ghost:hover {
+	background: var(--surface-2);
+	color: var(--text);
+}
+
+/* ============================ Card ============================ */
+.card {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--r-md);
+}
+
+/* ============================ Utilities ============================ */
+.selectable {
+	user-select: text;
+	cursor: auto;
+}
+.muted {
+	color: var(--text-2);
+}
+.faint {
+	color: var(--text-3);
+}
+.overline {
+	font-size: var(--fs-overline);
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+	color: var(--text-3);
+}
