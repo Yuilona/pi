@@ -9,6 +9,7 @@ import {
 	IconSidebar,
 	IconSun,
 } from "@/components/icons";
+import { Logo } from "@/components/Logo";
 
 interface TitlebarProps {
 	theme: "light" | "dark";
@@ -37,7 +38,7 @@ export function Titlebar({
 				<IconSidebar />
 			</button>
 			<div className="wordmark">
-				<span className="dot" />
+				<Logo size={17} />
 				pi
 			</div>
 

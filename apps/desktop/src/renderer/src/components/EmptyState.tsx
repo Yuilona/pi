@@ -1,3 +1,5 @@
+import { Logo } from "@/components/Logo";
+
 interface Suggestion {
 	t: string;
 	d: string;
@@ -26,7 +28,7 @@ export function EmptyState({ onPick }: { onPick: (prompt: string) => void }) {
 	return (
 		<div className="empty">
 			<div className="mark">
-				<span className="glyph" />
+				<Logo size={28} />
 			</div>
 			<h1>What shall we build?</h1>
 			<p className="sub">

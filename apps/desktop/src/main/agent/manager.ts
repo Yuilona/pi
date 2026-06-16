@@ -5,6 +5,7 @@ import {
 	createAgentSession,
 	DefaultResourceLoader,
 	getAgentDir,
+	loadSkills,
 	SessionManager,
 	SettingsManager,
 } from "@earendil-works/pi-coding-agent";
@@ -12,6 +13,7 @@ import type {
 	ApprovalDecision,
 	ApprovalRequest,
 	AppStateDto,
+	CommandDto,
 	CustomProviderInput,
 	IpcAgentEvent,
 	ModelInfoDto,
@@ -226,6 +228,41 @@ export class AgentManager {
 	/** Snapshot of the active session's transcript, used to hydrate the UI when resuming. */
 	getTranscript(): TranscriptDto {
 		return mapTranscript(this.session?.messages ?? []);
+	}
+
+	/**
+	 * Dynamic slash commands for the composer menu: pi prompt templates (`.pi/prompts/*.md`) and
+	 * skill commands (`/skill:name`). The SDK's prompt() expands both automatically on send, so the
+	 * renderer just sends the text. Builtin desktop commands are added on the renderer side.
+	 */
+	listCommands(): CommandDto[] {
+		const out: CommandDto[] = [];
+		for (const t of this.session?.promptTemplates ?? []) {
+			out.push({ name: t.name, description: t.description ?? "Prompt template", kind: "prompt", takesArgs: true });
+		}
+		try {
+			const { skills } = loadSkills({
+				cwd: this.cwd,
+				agentDir: getAgentDir(),
+				skillPaths: [],
+				includeDefaults: true,
+			});
+			for (const s of skills) {
+				out.push({ name: `skill:${s.name}`, description: s.description, kind: "skill", takesArgs: true });
+			}
+		} catch {
+			// skills are best-effort; a malformed skills dir shouldn't break the composer.
+		}
+		return out.sort((a, b) => a.name.localeCompare(b.name));
+	}
+
+	/** Manually compact the session context (the /compact builtin). */
+	async compact(): Promise<void> {
+		try {
+			await this.session?.compact();
+		} catch (err) {
+			this.onEvent({ type: "error", message: err instanceof Error ? err.message : String(err) });
+		}
 	}
 
 	/** Add/update a provider API key, refresh model availability, and rebuild the session. */

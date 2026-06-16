@@ -360,13 +360,6 @@
 	box-shadow: var(--shadow-ring), var(--shadow-whisper);
 	margin-bottom: var(--sp-10);
 }
-.gate .mark .glyph {
-	width: 18px;
-	height: 18px;
-	border-radius: var(--r-pill);
-	background: var(--brand);
-	box-shadow: 0 0 0 5px color-mix(in srgb, var(--brand) 16%, transparent);
-}
 .gate h1 {
 	font-size: var(--fs-subhead);
 	line-height: var(--lh-tight);

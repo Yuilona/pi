@@ -131,6 +131,24 @@ Goal: no hardcoded provider; the app uses pi's own config so any provider/custom
       `$$` blocks so each delimiter sits on its own line (well-formed flow math); single-line `$$…$$`,
       inline `$…$`, table cells, and code spans/fences are left untouched. Verified on the real
       "搜索介绍3dgs" session — `\begin{cases}`, `\begin{bmatrix}`, `\boxed{}` now render cleanly, no red wall.
+- [x] **Slash-command menu in the composer**: typing `/` opens an autocomplete popup above the input
+      (↑/↓ to move, Enter/Tab to accept, Esc to dismiss, click to pick; filtered by prefix). Three kinds
+      with colored tags: builtin (APP), prompt template (PROMPT, green), skill (SKILL, terracotta).
+      `manager.listCommands()` returns prompt templates (`session.promptTemplates`) + skills
+      (`loadSkills`); the SDK's `prompt()` already expands `/template` and `/skill:name` on send.
+      7 builtins wired to desktop actions (`runCommand` in App): `/settings`,`/model` → open settings;
+      `/new` → new chat; `/resume` → open sidebar; `/compact` → `session.compact()` via IPC;
+      `/copy` → clipboard last reply; `/quit` → close window. handleSend guards builtins so they never
+      get sent to the model. New IPC: `listCommands`, `compact`. Verified menu + prefix filter via screenshot.
+- [x] **Brand logo (π mark)**: replaced the plain terracotta dot with a refined serif-flavored π in a
+      terracotta→coral gradient (`components/Logo.tsx`, `useId()` gradient sanitized of `:`). Used in the
+      titlebar wordmark ("π pi"), the empty-state hero tile, and the setup gate; removed dead `.dot`/
+      `.glyph` CSS. Verified in light theme.
+- [x] **Settings: fold unconfigured API keys**: the API-keys list now shows only providers with a key
+      (`p.ready`) by default; the rest fold behind "Add a key for another provider · N" (`showAllKeys`
+      toggle, `.key-more`). A fresh user with none configured sees all (no confusing toggle). Cuts the
+      list from ~38 rows to the few configured. (Model picker already hid no-key providers via showAll.)
+      Verified: shows "4 configured" + "· 34" fold for this user's setup.
 
 ## Milestone M3 — Multi-provider settings UI  ✅ DONE (model picker / keys / custom endpoint)
 - [x] Settings slide-over (`SettingsPanel`): model picker over `listModels()` (975 grouped by provider,

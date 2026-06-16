@@ -5,6 +5,7 @@ import "@/styles/skill.css";
 import type {
 	ApprovalDecision,
 	ApprovalRequest,
+	CommandDto,
 	ModelInfoDto,
 	PermissionMode,
 	SessionInfoDto,
@@ -25,6 +26,17 @@ import { ViewContext } from "@/state/viewPrefs";
 type Theme = "light" | "dark";
 
 const MODE_ORDER: PermissionMode[] = ["ask", "acceptEdits", "yolo", "readonly"];
+
+// Builtin slash commands wired to desktop UI actions (prompt templates + skills come from the backend).
+const BUILTIN_COMMANDS: CommandDto[] = [
+	{ name: "settings", description: "Open settings", kind: "builtin", takesArgs: false },
+	{ name: "model", description: "Choose model (opens settings)", kind: "builtin", takesArgs: false },
+	{ name: "new", description: "Start a new chat", kind: "builtin", takesArgs: false },
+	{ name: "resume", description: "Open the chats sidebar", kind: "builtin", takesArgs: false },
+	{ name: "compact", description: "Compact the conversation context", kind: "builtin", takesArgs: false },
+	{ name: "copy", description: "Copy the last reply to the clipboard", kind: "builtin", takesArgs: false },
+	{ name: "quit", description: "Quit the app", kind: "builtin", takesArgs: false },
+];
 
 function prettyCwd(p: string): string {
 	const segments = p.split(/[\\/]/).filter(Boolean);
@@ -49,6 +61,7 @@ export function App() {
 	const [sessionFile, setSessionFile] = useState<string | undefined>();
 	const [showThinking, setShowThinking] = useState(true);
 	const [expandTools, setExpandTools] = useState(() => localStorage.getItem("pi.expandTools") === "1");
+	const [commands, setCommands] = useState<CommandDto[]>(BUILTIN_COMMANDS);
 
 	useEffect(() => {
 		document.documentElement.dataset.theme = theme;
@@ -90,6 +103,11 @@ export function App() {
 		setSessions(await window.pi.listSessions());
 	}, []);
 
+	const refreshCommands = useCallback(async () => {
+		const dynamic = await window.pi.listCommands();
+		setCommands([...BUILTIN_COMMANDS, ...dynamic]);
+	}, []);
+
 	const openSession = useCallback(
 		async (path: string) => {
 			await window.pi.switchSession(path);
@@ -119,6 +137,44 @@ export function App() {
 		[sessionFile, loadTranscript, refreshState, refreshSessions],
 	);
 
+	// Builtin "/" commands map to desktop actions; prompt/skill commands are sent as text (the SDK expands them).
+	const runCommand = useCallback(
+		(cmd: CommandDto) => {
+			if (cmd.kind !== "builtin") return;
+			setInput("");
+			switch (cmd.name) {
+				case "settings":
+				case "model":
+					setSettingsOpen(true);
+					break;
+				case "new":
+					void newChat();
+					break;
+				case "resume":
+					setSidebarOpen(true);
+					break;
+				case "compact":
+					void window.pi.compact();
+					break;
+				case "copy": {
+					const reply = [...state.messages].reverse().find((m) => m.role === "assistant");
+					const text = reply
+						? reply.content
+								.filter((b) => b.kind === "text")
+								.map((b) => (b as { text: string }).text)
+								.join("\n\n")
+						: "";
+					if (text) void navigator.clipboard.writeText(text);
+					break;
+				}
+				case "quit":
+					window.pi.window.close();
+					break;
+			}
+		},
+		[newChat, state.messages],
+	);
+
 	const applyMode = useCallback((m: PermissionMode) => {
 		setMode(m);
 		void window.pi.setMode(m);
@@ -142,14 +198,25 @@ export function App() {
 		if (ready === true && sidebarOpen) void refreshSessions();
 	}, [ready, sidebarOpen, state.streaming, refreshSessions]);
 
+	// Slash commands (prompt templates + skills) are project-scoped, so refresh them when the cwd changes.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: currentCwd intentionally re-triggers the refresh
+	useEffect(() => {
+		if (ready === true) void refreshCommands();
+	}, [ready, currentCwd, refreshCommands]);
+
 	const toggleTheme = useCallback(() => setTheme((t) => (t === "light" ? "dark" : "light")), []);
 
 	const handleSend = useCallback(() => {
 		const text = input.trim();
 		if (!text || state.streaming) return;
+		const builtin = commands.find((c) => c.kind === "builtin" && `/${c.name}` === text);
+		if (builtin) {
+			runCommand(builtin);
+			return;
+		}
 		send(text);
 		setInput("");
-	}, [input, state.streaming, send]);
+	}, [input, state.streaming, send, commands, runCommand]);
 
 	const chooseCwd = useCallback(async () => {
 		const dir = await window.pi.chooseCwd();
@@ -218,6 +285,8 @@ export function App() {
 								onStop={abort}
 								mode={mode}
 								onCycleMode={cycleMode}
+								commands={commands}
+								onRunCommand={runCommand}
 							/>
 						</>
 					) : (

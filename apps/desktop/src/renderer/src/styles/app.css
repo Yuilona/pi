@@ -201,14 +201,6 @@
 	box-shadow: var(--shadow-ring), var(--shadow-whisper);
 	margin-bottom: var(--sp-10);
 }
-.empty .mark .glyph {
-	width: 18px;
-	height: 18px;
-	border-radius: var(--r-pill);
-	background: var(--brand);
-	box-shadow: 0 0 0 5px color-mix(in srgb, var(--brand) 16%, transparent);
-}
-
 .empty h1 {
 	font-size: clamp(34px, 6vw, var(--fs-section));
 	line-height: var(--lh-tight);
@@ -351,6 +343,87 @@
 	border-radius: var(--r-sharp);
 	padding: 1px 5px;
 	color: var(--text-2);
+}
+
+/* ---- Slash-command menu ("/" autocomplete) ---- */
+.composer-anchor {
+	position: relative;
+}
+.cmd-menu {
+	position: absolute;
+	bottom: calc(100% + var(--sp-5));
+	left: 0;
+	right: 0;
+	max-height: 320px;
+	overflow-y: auto;
+	background: var(--surface);
+	border-radius: var(--r-lg);
+	box-shadow: var(--shadow-ring), var(--shadow-whisper-lg);
+	padding: var(--sp-3);
+	z-index: 5;
+	animation: cmd-pop 0.14s var(--ease);
+}
+@keyframes cmd-pop {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+}
+.cmd-menu-head {
+	padding: var(--sp-3) var(--sp-5) var(--sp-2);
+	font-size: var(--fs-label);
+	letter-spacing: 0.3px;
+	text-transform: uppercase;
+	color: var(--text-3);
+}
+.cmd-item {
+	display: flex;
+	align-items: baseline;
+	gap: var(--sp-5);
+	width: 100%;
+	text-align: left;
+	background: transparent;
+	border: none;
+	padding: var(--sp-4) var(--sp-5);
+	border-radius: var(--r-md);
+	transition: background 0.12s var(--ease);
+}
+.cmd-item.sel {
+	background: var(--surface-2);
+}
+.cmd-name {
+	flex: 0 0 auto;
+	font-family: var(--font-mono);
+	font-size: var(--fs-body-sm);
+	font-weight: 600;
+	color: var(--text);
+}
+.cmd-desc {
+	flex: 1;
+	min-width: 0;
+	font-size: var(--fs-caption);
+	color: var(--text-2);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.cmd-kind {
+	flex: 0 0 auto;
+	font-size: 9px;
+	letter-spacing: 0.4px;
+	text-transform: uppercase;
+	color: var(--text-3);
+	background: color-mix(in srgb, var(--text-3) 12%, transparent);
+	padding: 1px 6px;
+	border-radius: var(--r-pill);
+}
+.cmd-kind-prompt {
+	color: var(--diff-add-fg);
+	background: color-mix(in srgb, var(--diff-add-fg) 12%, transparent);
+}
+.cmd-kind-skill {
+	color: var(--brand);
+	background: color-mix(in srgb, var(--brand) 12%, transparent);
 }
 
 /* ---- Permission mode pill (above composer) ---- */

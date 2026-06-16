@@ -239,6 +239,21 @@
 .key-row input:focus {
 	border-color: var(--focus);
 }
+.key-more {
+	width: 100%;
+	text-align: left;
+	background: transparent;
+	border: none;
+	margin-top: var(--sp-3);
+	padding: var(--sp-4) var(--sp-2);
+	font-size: var(--fs-caption);
+	color: var(--brand);
+	border-radius: var(--r-md);
+	transition: background 0.12s var(--ease);
+}
+.key-more:hover {
+	background: var(--surface);
+}
 
 /* ---- forms / inputs ---- */
 .field {

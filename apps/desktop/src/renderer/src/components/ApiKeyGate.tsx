@@ -1,4 +1,5 @@
 import { type KeyboardEvent, useState } from "react";
+import { Logo } from "@/components/Logo";
 
 export function ApiKeyGate({ onReady }: { onReady: () => void }) {
 	const [key, setKey] = useState("");
@@ -23,7 +24,7 @@ export function ApiKeyGate({ onReady }: { onReady: () => void }) {
 	return (
 		<div className="gate">
 			<div className="mark">
-				<span className="glyph" />
+				<Logo size={28} />
 			</div>
 			<h1>Connect your agent</h1>
 			<p className="sub">

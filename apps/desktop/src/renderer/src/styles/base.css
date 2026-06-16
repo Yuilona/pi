@@ -128,12 +128,8 @@ button {
 	align-items: center;
 	gap: var(--sp-4);
 }
-.wordmark .dot {
-	width: 9px;
-	height: 9px;
-	border-radius: var(--r-pill);
-	background: var(--brand);
-	box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+.wordmark svg {
+	display: block;
 }
 
 .titlebar .spacer {

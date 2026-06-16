@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import {
 	type ApprovalDecision,
 	type ApprovalRequest,
+	type CommandDto,
 	type CustomProviderInput,
 	IPC,
 	type IpcAgentEvent,
@@ -34,6 +35,8 @@ const api: PiApi = {
 	deleteSession: (path: string) => ipcRenderer.invoke(IPC.deleteSession, path),
 	getTranscript: () => ipcRenderer.invoke(IPC.getTranscript) as Promise<TranscriptDto>,
 	getState: () => ipcRenderer.invoke(IPC.getState),
+	listCommands: () => ipcRenderer.invoke(IPC.listCommands) as Promise<CommandDto[]>,
+	compact: () => ipcRenderer.invoke(IPC.compact),
 
 	onEvent: (cb: (e: IpcAgentEvent) => void) => {
 		const listener = (_e: unknown, ev: IpcAgentEvent) => cb(ev);

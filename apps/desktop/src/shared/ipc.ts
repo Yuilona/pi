@@ -29,6 +29,8 @@ export const IPC = {
 	deleteSession: "pi:deleteSession",
 	getTranscript: "pi:getTranscript",
 	getState: "pi:getState",
+	listCommands: "pi:listCommands",
+	compact: "pi:compact",
 	// agent stream (main -> renderer, send)
 	event: "pi:event",
 	// approvals
@@ -132,6 +134,20 @@ export interface ApprovalRequest {
 	input: unknown;
 }
 
+/**
+ * A slash command offered in the composer's "/" menu.
+ * - builtin: a desktop UI action (settings/model/new/resume/compact/copy/quit), run client-side.
+ * - prompt: a pi prompt template (.pi/prompts/*.md), expanded by the SDK on send.
+ * - skill:  a "/skill:name" command, expanded by the SDK on send.
+ * `takesArgs` → selecting it inserts "/name " so the user can add arguments before sending.
+ */
+export interface CommandDto {
+	name: string;
+	description: string;
+	kind: "builtin" | "prompt" | "skill";
+	takesArgs: boolean;
+}
+
 export interface SessionInfoDto {
 	path: string;
 	title: string;
@@ -192,6 +208,9 @@ export interface PiApi {
 	deleteSession(path: string): Promise<void>;
 	getTranscript(): Promise<TranscriptDto>;
 	getState(): Promise<AppStateDto>;
+	/** Dynamic slash commands (prompt templates + skill commands) discovered from ~/.pi + the project. */
+	listCommands(): Promise<CommandDto[]>;
+	compact(): Promise<void>;
 	// streams
 	onEvent(cb: (e: IpcAgentEvent) => void): () => void;
 	onApproval(cb: (r: ApprovalRequest) => void): () => void;

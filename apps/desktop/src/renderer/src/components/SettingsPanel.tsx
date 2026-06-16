@@ -65,6 +65,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 	const [providers, setProviders] = useState<ProviderInfoDto[]>([]);
 	const [search, setSearch] = useState("");
 	const [showAll, setShowAll] = useState(false);
+	const [showAllKeys, setShowAllKeys] = useState(false);
 	const [expanded, setExpanded] = useState<Set<string>>(new Set());
 	const [keyDrafts, setKeyDrafts] = useState<Record<string, string>>({});
 	const [thinking, setThinking] = useState<ThinkingLevelDto>(thinkingLevel);
@@ -154,6 +155,13 @@ export function SettingsPanel(props: SettingsPanelProps) {
 		void window.pi.setThinking(level);
 	};
 
+	// API keys: only show providers that already have a key; fold the rest behind a toggle so the long
+	// list of unconfigured providers doesn't clutter the panel. A fresh user (none ready) sees them all.
+	const readyKeys = providers.filter((p) => p.ready);
+	const lockedKeys = providers.filter((p) => !p.ready);
+	const noneReady = readyKeys.length === 0;
+	const visibleKeyProviders = showAllKeys || noneReady ? providers : readyKeys;
+
 	return (
 		<>
 			<button type="button" className="sheet-backdrop" onClick={onClose} aria-label="Close settings" />
@@ -240,8 +248,11 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
 					{/* ---- Provider API keys ---- */}
 					<div className="section">
-						<div className="label">API keys</div>
-						{providers.map((p) => (
+						<div className="label">
+							API keys
+							<span className="count"> · {readyKeys.length} configured</span>
+						</div>
+						{visibleKeyProviders.map((p) => (
 							<div className="key-row" key={p.provider}>
 								<div className="pinfo">
 									<div className="n">{p.provider}</div>
@@ -284,6 +295,14 @@ export function SettingsPanel(props: SettingsPanelProps) {
 								)}
 							</div>
 						))}
+						{readyKeys.length === 0 && visibleKeyProviders.length === 0 && (
+							<div className="hint">No providers detected.</div>
+						)}
+						{!noneReady && lockedKeys.length > 0 && (
+							<button type="button" className="key-more" onClick={() => setShowAllKeys((v) => !v)}>
+								{showAllKeys ? "Show fewer" : `Add a key for another provider · ${lockedKeys.length}`}
+							</button>
+						)}
 					</div>
 
 					{/* ---- Custom endpoint ---- */}
