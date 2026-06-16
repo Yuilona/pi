@@ -20,6 +20,9 @@ importers:
       '@earendil-works/pi-tui':
         specifier: file:../../packages/tui
         version: file:../../packages/tui
+      undici:
+        specifier: 8.3.0
+        version: 8.3.0
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.3.5

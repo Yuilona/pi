@@ -31,6 +31,8 @@ export const IPC = {
 	getState: "pi:getState",
 	listCommands: "pi:listCommands",
 	compact: "pi:compact",
+	getProxyConfig: "pi:getProxyConfig",
+	setProxyConfig: "pi:setProxyConfig",
 	// agent stream (main -> renderer, send)
 	event: "pi:event",
 	// approvals
@@ -173,6 +175,17 @@ export interface TranscriptDto {
 	tools: ToolSnapshotDto[];
 }
 
+/**
+ * Desktop-only outbound proxy. When enabled, the main process routes the pi/OpenAI SDK's requests
+ * through `url` (an HTTP proxy, e.g. a local `http://127.0.0.1:10808`) so endpoints only reachable via
+ * a proxy work without TUN mode. `envProxy` is the detected HTTP(S)_PROXY, offered as a pre-fill.
+ */
+export interface ProxyConfigDto {
+	enabled: boolean;
+	url: string;
+	envProxy: string;
+}
+
 export interface AppStateDto {
 	cwd: string;
 	model?: ModelInfoDto;
@@ -211,6 +224,10 @@ export interface PiApi {
 	/** Dynamic slash commands (prompt templates + skill commands) discovered from ~/.pi + the project. */
 	listCommands(): Promise<CommandDto[]>;
 	compact(): Promise<void>;
+	/** Read the saved outbound-proxy config plus the detected env proxy (for pre-filling the field). */
+	getProxyConfig(): Promise<ProxyConfigDto>;
+	/** Persist + apply the outbound-proxy config; takes effect on the next message. */
+	setProxyConfig(cfg: { enabled: boolean; url: string }): Promise<void>;
 	// streams
 	onEvent(cb: (e: IpcAgentEvent) => void): () => void;
 	onApproval(cb: (r: ApprovalRequest) => void): () => void;

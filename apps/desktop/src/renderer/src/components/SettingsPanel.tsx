@@ -1,5 +1,12 @@
 import "@/styles/settings.css";
-import type { CustomProviderInput, ModelInfoDto, PermissionMode, ProviderInfoDto, ThinkingLevelDto } from "@shared/ipc";
+import type {
+	CustomProviderInput,
+	ModelInfoDto,
+	PermissionMode,
+	ProviderInfoDto,
+	ProxyConfigDto,
+	ThinkingLevelDto,
+} from "@shared/ipc";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	IconCheck,
@@ -71,6 +78,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 	const [thinking, setThinking] = useState<ThinkingLevelDto>(thinkingLevel);
 	const [custom, setCustom] = useState<CustomProviderInput>(EMPTY_CUSTOM);
 	const [busy, setBusy] = useState(false);
+	const [proxy, setProxy] = useState<ProxyConfigDto>({ enabled: false, url: "", envProxy: "" });
 	const view = useView();
 
 	const load = useCallback(async () => {
@@ -88,6 +96,20 @@ export function SettingsPanel(props: SettingsPanelProps) {
 	useEffect(() => {
 		void load();
 	}, [load]);
+
+	useEffect(() => {
+		void window.pi.getProxyConfig().then(setProxy);
+	}, []);
+
+	// Persist + apply the proxy config. Enabling with an empty field falls back to the detected env proxy.
+	const updateProxy = (next: Partial<Pick<ProxyConfigDto, "enabled" | "url">>) => {
+		setProxy((prev) => {
+			const merged = { ...prev, ...next };
+			if (merged.enabled && !merged.url) merged.url = prev.envProxy;
+			void window.pi.setProxyConfig({ enabled: merged.enabled, url: merged.url });
+			return merged;
+		});
+	};
 
 	const groups = useMemo(() => {
 		const map = new Map<string, ModelInfoDto[]>();
@@ -409,6 +431,34 @@ export function SettingsPanel(props: SettingsPanelProps) {
 							Add endpoint
 						</button>
 						<div className="hint">Writes to ~/.pi/agent/models.json and refreshes the model registry.</div>
+					</div>
+
+					{/* ---- Network proxy ---- */}
+					<div className="section">
+						<div className="label">Network proxy</div>
+						<label className="row-toggle">
+							<span>Route model requests through a proxy</span>
+							<input
+								type="checkbox"
+								checked={proxy.enabled}
+								onChange={(e) => updateProxy({ enabled: e.target.checked })}
+							/>
+						</label>
+						<div className="field">
+							<label htmlFor="proxy-url">Proxy URL</label>
+							<input
+								id="proxy-url"
+								value={proxy.url}
+								placeholder={proxy.envProxy || "http://127.0.0.1:10808"}
+								onChange={(e) => setProxy((p) => ({ ...p, url: e.target.value }))}
+								onBlur={() => updateProxy({ url: proxy.url.trim() })}
+							/>
+						</div>
+						<div className="hint">
+							Sends the app's API requests through an HTTP proxy (e.g. your local 127.0.0.1:10808) — use this
+							instead of TUN mode when an endpoint is only reachable through your proxy. Takes effect on your
+							next message.
+						</div>
 					</div>
 
 					{/* ---- Display / message visibility ---- */}

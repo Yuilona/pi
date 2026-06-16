@@ -3,6 +3,7 @@ import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { IPC } from "../shared/ipc.js";
 import { registerAgentBridge } from "./agent/bridge.js";
 import type { AgentManager } from "./agent/manager.js";
+import { applyProxy, loadProxyConfig } from "./agent/proxy.js";
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL;
 
@@ -93,6 +94,8 @@ function registerWindowControls(): void {
 }
 
 app.whenReady().then(() => {
+	// Route outbound fetch through the saved proxy (if enabled) before the agent makes any request.
+	applyProxy(loadProxyConfig());
 	registerWindowControls();
 	manager = registerAgentBridge(() => mainWindow, app.getPath("home"));
 	mainWindow = createWindow();

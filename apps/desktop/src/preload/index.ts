@@ -10,6 +10,7 @@ import {
 	type PermissionMode,
 	type PiApi,
 	type ProviderInfoDto,
+	type ProxyConfigDto,
 	type SessionInfoDto,
 	type ThinkingLevelDto,
 	type TranscriptDto,
@@ -37,6 +38,8 @@ const api: PiApi = {
 	getState: () => ipcRenderer.invoke(IPC.getState),
 	listCommands: () => ipcRenderer.invoke(IPC.listCommands) as Promise<CommandDto[]>,
 	compact: () => ipcRenderer.invoke(IPC.compact),
+	getProxyConfig: () => ipcRenderer.invoke(IPC.getProxyConfig) as Promise<ProxyConfigDto>,
+	setProxyConfig: (cfg: { enabled: boolean; url: string }) => ipcRenderer.invoke(IPC.setProxyConfig, cfg),
 
 	onEvent: (cb: (e: IpcAgentEvent) => void) => {
 		const listener = (_e: unknown, ev: IpcAgentEvent) => cb(ev);

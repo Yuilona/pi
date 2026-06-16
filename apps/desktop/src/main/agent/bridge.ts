@@ -7,6 +7,7 @@ import {
 	type ThinkingLevelDto,
 } from "../../shared/ipc.js";
 import { AgentManager } from "./manager.js";
+import { detectEnvProxy, loadProxyConfig, setProxyConfig } from "./proxy.js";
 
 /** Wire the AgentManager to ipcMain and forward its events to the renderer window. */
 export function registerAgentBridge(getWindow: () => BrowserWindow | null, cwd: string): AgentManager {
@@ -41,6 +42,10 @@ export function registerAgentBridge(getWindow: () => BrowserWindow | null, cwd: 
 	ipcMain.handle(IPC.getState, () => manager.getState());
 	ipcMain.handle(IPC.listCommands, () => manager.listCommands());
 	ipcMain.handle(IPC.compact, () => manager.compact());
+	ipcMain.handle(IPC.getProxyConfig, () => ({ ...loadProxyConfig(), envProxy: detectEnvProxy() }));
+	ipcMain.handle(IPC.setProxyConfig, (_e, cfg: { enabled: boolean; url: string }) => {
+		setProxyConfig(cfg);
+	});
 	ipcMain.handle(IPC.chooseCwd, async () => {
 		const win = getWindow();
 		const result = win
