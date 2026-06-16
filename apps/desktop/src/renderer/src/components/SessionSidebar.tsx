@@ -1,5 +1,5 @@
 import type { SessionInfoDto } from "@shared/ipc";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { IconFolder, IconPlus, IconTrash } from "@/components/icons";
 
 /** How many of a project's most-recent chats stay pinned; the rest fold under "show more". */
@@ -33,6 +33,9 @@ interface SessionSidebarProps {
 }
 
 export function SessionSidebar({ sessions, activePath, currentCwd, onSelect, onNew, onDelete }: SessionSidebarProps) {
+	// Remembered project order, so the list stays put across refreshes (deleting a chat must NOT reshuffle
+	// projects — you should never have to hunt for where a project jumped to).
+	const orderRef = useRef<string[]>([]);
 	const groups = useMemo<SessionGroup[]>(() => {
 		const map = new Map<string, SessionGroup>();
 		for (const s of sessions) {
@@ -40,12 +43,21 @@ export function SessionSidebar({ sessions, activePath, currentCwd, onSelect, onN
 			g.sessions.push(s);
 			map.set(s.cwd, g);
 		}
-		const arr = [...map.values()];
-		for (const g of arr) g.sessions.sort((a, b) => b.modified - a.modified);
-		// Stable order by each project's latest activity — switching projects must NOT reorder the list,
-		// so this deliberately does not depend on currentCwd.
-		arr.sort((a, b) => (b.sessions[0]?.modified ?? 0) - (a.sessions[0]?.modified ?? 0));
-		return arr;
+		for (const g of map.values()) g.sessions.sort((a, b) => b.modified - a.modified);
+
+		// Projects already shown keep their position; only brand-new projects are slotted in (at top, by
+		// latest activity). A project drops out only when its last chat is deleted. Switching projects,
+		// sending messages, or deleting a chat therefore never reorders the existing groups.
+		const present = new Set(map.keys());
+		const kept = orderRef.current.filter((cwd) => present.has(cwd));
+		const keptSet = new Set(kept);
+		const fresh = [...map.values()]
+			.filter((g) => !keptSet.has(g.cwd))
+			.sort((a, b) => (b.sessions[0]?.modified ?? 0) - (a.sessions[0]?.modified ?? 0))
+			.map((g) => g.cwd);
+		const order = [...fresh, ...kept];
+		orderRef.current = order;
+		return order.map((cwd) => map.get(cwd)).filter((g): g is SessionGroup => g !== undefined);
 	}, [sessions]);
 
 	return (

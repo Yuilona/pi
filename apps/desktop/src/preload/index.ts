@@ -4,6 +4,7 @@ import {
 	type ApprovalRequest,
 	type CommandDto,
 	type CustomProviderInput,
+	type ImageAttachmentDto,
 	IPC,
 	type IpcAgentEvent,
 	type ModelInfoDto,
@@ -17,7 +18,8 @@ import {
 } from "../shared/ipc.js";
 
 const api: PiApi = {
-	send: (text: string) => ipcRenderer.invoke(IPC.send, text),
+	send: (text: string, images?: ImageAttachmentDto[]) => ipcRenderer.invoke(IPC.send, text, images),
+	getStats: () => ipcRenderer.invoke(IPC.getStats),
 	abort: () => ipcRenderer.invoke(IPC.abort),
 	newSession: () => ipcRenderer.invoke(IPC.newSession),
 	setModel: (provider: string, id: string) => ipcRenderer.invoke(IPC.setModel, provider, id),

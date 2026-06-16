@@ -1,7 +1,8 @@
-import { type BrowserWindow, dialog, ipcMain } from "electron";
+import { type BrowserWindow, dialog, ipcMain, Notification } from "electron";
 import {
 	type ApprovalDecision,
 	type CustomProviderInput,
+	type ImageAttachmentDto,
 	IPC,
 	type PermissionMode,
 	type ThinkingLevelDto,
@@ -11,9 +12,27 @@ import { detectEnvProxy, loadProxyConfig, setProxyConfig } from "./proxy.js";
 
 /** Wire the AgentManager to ipcMain and forward its events to the renderer window. */
 export function registerAgentBridge(getWindow: () => BrowserWindow | null, cwd: string): AgentManager {
+	// OS notification when work finishes or needs you — only when the window isn't already focused.
+	const notify = (title: string, body: string) => {
+		const win = getWindow();
+		if (win && !win.isFocused() && Notification.isSupported()) {
+			const n = new Notification({ title, body });
+			n.on("click", () => {
+				win.show();
+				win.focus();
+			});
+			n.show();
+		}
+	};
 	const manager = new AgentManager(
-		(e) => getWindow()?.webContents.send(IPC.event, e),
-		(req) => getWindow()?.webContents.send(IPC.approvalRequest, req),
+		(e) => {
+			getWindow()?.webContents.send(IPC.event, e);
+			if (e.type === "agent_end" && !e.willRetry) notify("pi", "Response ready");
+		},
+		(req) => {
+			getWindow()?.webContents.send(IPC.approvalRequest, req);
+			notify("pi — approval needed", `Allow ${req.toolName}?`);
+		},
 		cwd,
 	);
 	void manager.init();
@@ -22,7 +41,8 @@ export function registerAgentBridge(getWindow: () => BrowserWindow | null, cwd: 
 		manager.resolveApproval(id, decision),
 	);
 
-	ipcMain.handle(IPC.send, (_e, text: string) => manager.prompt(text));
+	ipcMain.handle(IPC.send, (_e, text: string, images?: ImageAttachmentDto[]) => manager.prompt(text, images));
+	ipcMain.handle(IPC.getStats, () => manager.getStats());
 	ipcMain.handle(IPC.abort, () => manager.abort());
 	ipcMain.handle(IPC.newSession, () => manager.newSession());
 	ipcMain.handle(IPC.setModel, (_e, provider: string, id: string) => manager.setModel(provider, id));

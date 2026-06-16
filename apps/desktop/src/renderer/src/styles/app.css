@@ -426,6 +426,183 @@
 	background: color-mix(in srgb, var(--brand) 12%, transparent);
 }
 
+/* ---- Composer bar: mode pill + model switcher + usage ---- */
+.composer-bar {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-4);
+	margin-bottom: var(--sp-5);
+	padding: 0 var(--sp-2);
+}
+.bar-spacer {
+	flex: 1;
+}
+.model-pick {
+	position: relative;
+}
+.model-pill {
+	-webkit-app-region: no-drag;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--sp-3);
+	max-width: 240px;
+	background: var(--surface);
+	border: none;
+	border-radius: var(--r-pill);
+	padding: 4px 8px 4px 11px;
+	color: var(--text-2);
+	box-shadow: var(--shadow-ring);
+	transition:
+		box-shadow 0.16s var(--ease),
+		color 0.16s var(--ease);
+}
+.model-pill:hover {
+	box-shadow: var(--shadow-ring-deep);
+	color: var(--text);
+}
+.model-pill-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-family: var(--font-mono);
+	font-size: 12px;
+}
+.mp-chev {
+	flex: 0 0 auto;
+	color: var(--text-3);
+	transition: transform 0.18s var(--ease);
+}
+.mp-chev.open {
+	transform: rotate(90deg);
+}
+.model-menu {
+	position: absolute;
+	bottom: calc(100% + var(--sp-4));
+	left: 0;
+	min-width: 260px;
+	max-height: 320px;
+	overflow-y: auto;
+	background: var(--surface);
+	border-radius: var(--r-lg);
+	box-shadow: var(--shadow-ring), var(--shadow-whisper-lg);
+	padding: var(--sp-3);
+	z-index: 6;
+	animation: cmd-pop 0.14s var(--ease);
+}
+.model-opt {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	width: 100%;
+	text-align: left;
+	background: transparent;
+	border: none;
+	padding: var(--sp-4) var(--sp-5);
+	border-radius: var(--r-md);
+	transition: background 0.12s var(--ease);
+}
+.model-opt:hover {
+	background: var(--surface-2);
+}
+.model-opt.on {
+	background: color-mix(in srgb, var(--brand) 10%, transparent);
+}
+.mo-id {
+	font-family: var(--font-mono);
+	font-size: var(--fs-body-sm);
+	color: var(--text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mo-prov {
+	font-size: var(--fs-label);
+	color: var(--text-3);
+}
+.usage {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-5);
+	font-size: var(--fs-label);
+	font-variant-numeric: tabular-nums;
+	color: var(--text-3);
+}
+
+/* ---- Image attachments ---- */
+.composer-anchor.dragging .composer {
+	box-shadow:
+		0 0 0 2px var(--brand),
+		var(--shadow-whisper);
+}
+.drop-hint {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	border-radius: var(--r-2xl);
+	background: color-mix(in srgb, var(--brand) 8%, var(--surface));
+	color: var(--brand);
+	font-size: var(--fs-body-sm);
+	pointer-events: none;
+	z-index: 4;
+}
+.attach-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--sp-4);
+	padding: 0 0 var(--sp-5);
+}
+.attach {
+	position: relative;
+	width: 56px;
+	height: 56px;
+	border-radius: var(--r-md);
+	overflow: hidden;
+	box-shadow: var(--shadow-ring);
+}
+.attach img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+.attach-x {
+	position: absolute;
+	top: 2px;
+	right: 2px;
+	width: 18px;
+	height: 18px;
+	display: grid;
+	place-items: center;
+	border: none;
+	border-radius: var(--r-pill);
+	background: rgba(20, 20, 19, 0.6);
+	color: #fff;
+}
+.attach-x:hover {
+	background: rgba(20, 20, 19, 0.85);
+}
+.attach-btn {
+	-webkit-app-region: no-drag;
+	flex: 0 0 auto;
+	width: 32px;
+	height: 32px;
+	align-self: flex-end;
+	display: grid;
+	place-items: center;
+	border: none;
+	border-radius: var(--r-lg);
+	background: transparent;
+	color: var(--text-3);
+	transition:
+		color 0.14s var(--ease),
+		background 0.14s var(--ease);
+}
+.attach-btn:hover {
+	color: var(--text);
+	background: var(--surface-2);
+}
+
 /* ---- Permission mode pill (above composer) ---- */
 .mode-row {
 	display: flex;

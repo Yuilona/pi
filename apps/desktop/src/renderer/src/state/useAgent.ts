@@ -1,3 +1,4 @@
+import type { ImageAttachmentDto } from "@shared/ipc";
 import { useCallback, useEffect, useReducer } from "react";
 import { chatReducer, initialChatState } from "@/state/chatReducer";
 
@@ -6,8 +7,8 @@ export function useAgent() {
 
 	useEffect(() => window.pi.onEvent((e) => dispatch(e)), []);
 
-	const send = useCallback((text: string) => {
-		void window.pi.send(text);
+	const send = useCallback((text: string, images?: ImageAttachmentDto[]) => {
+		void window.pi.send(text, images);
 	}, []);
 
 	const abort = useCallback(() => {

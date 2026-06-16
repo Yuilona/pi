@@ -33,6 +33,7 @@ export const IPC = {
 	compact: "pi:compact",
 	getProxyConfig: "pi:getProxyConfig",
 	setProxyConfig: "pi:setProxyConfig",
+	getStats: "pi:getStats",
 	// agent stream (main -> renderer, send)
 	event: "pi:event",
 	// approvals
@@ -88,7 +89,27 @@ export interface CustomProviderInput {
 export type IpcContentBlock =
 	| { kind: "text"; text: string }
 	| { kind: "thinking"; text: string; redacted?: boolean }
-	| { kind: "toolCall"; id: string; name: string; args: unknown };
+	| { kind: "toolCall"; id: string; name: string; args: unknown }
+	| { kind: "image"; dataUrl: string };
+
+/** An image attached to a user message, sent from renderer → main (base64, no data: prefix). */
+export interface ImageAttachmentDto {
+	data: string;
+	mimeType: string;
+}
+
+/** Token usage + cost + context-window fill for the active session (the composer's usage readout). */
+export interface UsageDto {
+	input: number;
+	output: number;
+	cacheRead: number;
+	cacheWrite: number;
+	total: number;
+	cost: number;
+	contextTokens: number | null;
+	contextWindow: number;
+	contextPercent: number | null;
+}
 
 export interface IpcMessage {
 	id: string;
@@ -202,7 +223,8 @@ export interface AppStateDto {
 
 export interface PiApi {
 	// agent control
-	send(text: string): Promise<void>;
+	send(text: string, images?: ImageAttachmentDto[]): Promise<void>;
+	getStats(): Promise<UsageDto>;
 	abort(): Promise<void>;
 	newSession(): Promise<void>;
 	setModel(provider: string, id: string): Promise<void>;

@@ -6,10 +6,12 @@ import type {
 	ApprovalDecision,
 	ApprovalRequest,
 	CommandDto,
+	ImageAttachmentDto,
 	ModelInfoDto,
 	PermissionMode,
 	SessionInfoDto,
 	ThinkingLevelDto,
+	UsageDto,
 } from "@shared/ipc";
 import { useCallback, useEffect, useState } from "react";
 import { ApiKeyGate } from "@/components/ApiKeyGate";
@@ -62,6 +64,9 @@ export function App() {
 	const [showThinking, setShowThinking] = useState(true);
 	const [expandTools, setExpandTools] = useState(() => localStorage.getItem("pi.expandTools") === "1");
 	const [commands, setCommands] = useState<CommandDto[]>(BUILTIN_COMMANDS);
+	const [attachments, setAttachments] = useState<ImageAttachmentDto[]>([]);
+	const [usage, setUsage] = useState<UsageDto | undefined>();
+	const [models, setModels] = useState<ModelInfoDto[]>([]);
 
 	useEffect(() => {
 		document.documentElement.dataset.theme = theme;
@@ -108,8 +113,26 @@ export function App() {
 		setCommands([...BUILTIN_COMMANDS, ...dynamic]);
 	}, []);
 
+	const refreshStats = useCallback(async () => {
+		setUsage(await window.pi.getStats());
+	}, []);
+
+	const refreshModels = useCallback(async () => {
+		const all = await window.pi.listModels();
+		setModels(all.filter((m) => m.available));
+	}, []);
+
+	const pickModel = useCallback(
+		async (provider: string, id: string) => {
+			await window.pi.setModel(provider, id);
+			await refreshState();
+		},
+		[refreshState],
+	);
+
 	const openSession = useCallback(
 		async (path: string) => {
+			setAttachments([]);
 			await window.pi.switchSession(path);
 			await loadTranscript();
 			await refreshState();
@@ -119,6 +142,7 @@ export function App() {
 	);
 
 	const newChat = useCallback(async () => {
+		setAttachments([]);
 		await reset();
 		await refreshState();
 		await refreshSessions();
@@ -204,19 +228,32 @@ export function App() {
 		if (ready === true) void refreshCommands();
 	}, [ready, currentCwd, refreshCommands]);
 
+	// Ready models for the composer's quick model switcher (project-scoped credentials may change with cwd).
+	// biome-ignore lint/correctness/useExhaustiveDependencies: currentCwd intentionally re-triggers the refresh
+	useEffect(() => {
+		if (ready === true) void refreshModels();
+	}, [ready, currentCwd, refreshModels]);
+
+	// Token-usage readout: refresh when a turn ends (streaming flips) and when the active session changes.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: state.streaming intentionally re-triggers the refresh
+	useEffect(() => {
+		if (ready === true) void refreshStats();
+	}, [ready, state.streaming, sessionFile, refreshStats]);
+
 	const toggleTheme = useCallback(() => setTheme((t) => (t === "light" ? "dark" : "light")), []);
 
 	const handleSend = useCallback(() => {
 		const text = input.trim();
-		if (!text || state.streaming) return;
-		const builtin = commands.find((c) => c.kind === "builtin" && `/${c.name}` === text);
+		if ((!text && attachments.length === 0) || state.streaming) return;
+		const builtin = text ? commands.find((c) => c.kind === "builtin" && `/${c.name}` === text) : undefined;
 		if (builtin) {
 			runCommand(builtin);
 			return;
 		}
-		send(text);
+		send(text, attachments.length ? attachments : undefined);
 		setInput("");
-	}, [input, state.streaming, send, commands, runCommand]);
+		setAttachments([]);
+	}, [input, attachments, state.streaming, send, commands, runCommand]);
 
 	const chooseCwd = useCallback(async () => {
 		const dir = await window.pi.chooseCwd();
@@ -287,6 +324,13 @@ export function App() {
 								onCycleMode={cycleMode}
 								commands={commands}
 								onRunCommand={runCommand}
+								attachments={attachments}
+								onAddImages={(imgs) => setAttachments((a) => [...a, ...imgs])}
+								onRemoveImage={(i) => setAttachments((a) => a.filter((_, idx) => idx !== i))}
+								models={models}
+								model={model}
+								onPickModel={(p, id) => void pickModel(p, id)}
+								usage={usage}
 							/>
 						</>
 					) : (

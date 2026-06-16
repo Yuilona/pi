@@ -41,6 +41,8 @@ type AnyBlock = {
 	id?: string;
 	name?: string;
 	arguments?: unknown;
+	data?: string;
+	mimeType?: string;
 };
 
 function mapContent(content: unknown): IpcContentBlock[] {
@@ -53,7 +55,8 @@ function mapContent(content: unknown): IpcContentBlock[] {
 			out.push({ kind: "thinking", text: raw.thinking ?? "", redacted: raw.redacted });
 		else if (raw.type === "toolCall" && raw.id && raw.name)
 			out.push({ kind: "toolCall", id: raw.id, name: raw.name, args: raw.arguments });
-		// image blocks inside messages are ignored for now (tool images are mapped in tool results)
+		else if (raw.type === "image" && raw.data)
+			out.push({ kind: "image", dataUrl: `data:${raw.mimeType ?? "image/png"};base64,${raw.data}` });
 	}
 	return out;
 }

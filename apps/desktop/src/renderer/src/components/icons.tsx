@@ -111,6 +111,14 @@ export const IconTrash = (p: SVGProps<SVGSVGElement>) => (
 	</svg>
 );
 
+export const IconImage = (p: SVGProps<SVGSVGElement>) => (
+	<svg {...base} {...p} aria-hidden="true">
+		<rect x="3" y="4" width="18" height="16" rx="2" />
+		<circle cx="8.5" cy="9.5" r="1.5" />
+		<path d="M21 16l-5-5L5 20" />
+	</svg>
+);
+
 export const IconTool = (p: SVGProps<SVGSVGElement>) => (
 	<svg {...base} width={14} height={14} {...p} aria-hidden="true">
 		<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.3 2.3-2-2 2.3-2.3Z" />

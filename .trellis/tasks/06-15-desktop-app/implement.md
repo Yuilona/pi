@@ -110,6 +110,10 @@ Goal: no hardcoded provider; the app uses pi's own config so any provider/custom
       ignores currentCwd); current project shown only via a terracotta "current" badge + brand folder icon;
       each group pins the 4 most-recent chats (`ProjectGroup` subcomponent), the rest fold under a
       "Show N more…/Show less" toggle. Verified across 3 projects (overflow + expand screenshotted).
+- [x] **Stable project order across refreshes** (`orderRef` in SessionSidebar): project group order is
+      remembered, so deleting a chat (or sending a message) never reshuffles projects — you don't have to
+      hunt for where a project jumped to. Existing projects keep their slot; only brand-new projects are
+      inserted (at top, by latest activity); a group drops out only when its last chat is deleted.
 - [x] **Skill-activation card (pi is skill-driven)**: a skill is invoked when the model `read`s a
       SKILL.md (see coding-agent `formatSkillsForPrompt`). `skillActivation()` in `toolText.ts` detects
       `read` + path basename `SKILL.md` (or a `.md` under a `skills/` dir) → routes to a dedicated
@@ -162,6 +166,17 @@ Goal: no hardcoded provider; the app uses pi's own config so any provider/custom
       reached the server.) FIX: `normalizeToolSchemas()` in the outbound fetch wrapper adds `required: []`
       to any object tool schema missing it — runs proxy on OR off, keeps all 7 tools, pi untouched.
       Verified end-to-end (home cwd + all 7 tools + proxy → full reply).
+- [x] **Codex-parity batch (image input / notifications / usage / model switch)**:
+      • **Image input** — composer drag-drop, paste, and an attach button; thumbnails with remove; sent
+        via `session.prompt(text, { images })` (`ImageContent` = base64+mimeType). User image blocks now
+        map (`mappers.ts`) + render in `UserBubble`. New `ImageAttachmentDto`; `send(text, images?)`.
+      • **Task notifications** — `bridge.ts` fires an Electron `Notification` on `agent_end` (and on
+        approval requests) when the window isn't focused; click focuses the window.
+      • **Token usage readout** — `manager.getStats()` → `session.getSessionStats()` (`UsageDto`); a
+        compact "N% ctx ↑in ↓out [$cost]" in the composer bar, refreshed when a turn ends / session
+        changes. New IPC `getStats`.
+      • **Composer model switcher** — model pill + dropdown of ready models (id + provider) next to the
+        mode pill; reuses `listModels`/`setModel`. Verified all four via screenshots (light theme).
 
 ## Milestone M3 — Multi-provider settings UI  ✅ DONE (model picker / keys / custom endpoint)
 - [x] Settings slide-over (`SettingsPanel`): model picker over `listModels()` (975 grouped by provider,

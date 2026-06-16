@@ -15,6 +15,7 @@ import type {
 	AppStateDto,
 	CommandDto,
 	CustomProviderInput,
+	ImageAttachmentDto,
 	IpcAgentEvent,
 	ModelInfoDto,
 	PermissionMode,
@@ -22,6 +23,7 @@ import type {
 	SessionInfoDto,
 	ThinkingLevelDto,
 	TranscriptDto,
+	UsageDto,
 } from "../../shared/ipc.js";
 import { createApprovalExtensionFactory } from "./approval.js";
 import {
@@ -170,13 +172,33 @@ export class AgentManager {
 		}
 	}
 
-	async prompt(text: string): Promise<void> {
+	async prompt(text: string, images?: ImageAttachmentDto[]): Promise<void> {
 		try {
 			await this.ensureSession();
-			await this.session?.prompt(text);
+			const imgs = images?.length
+				? images.map((i) => ({ type: "image" as const, data: i.data, mimeType: i.mimeType }))
+				: undefined;
+			await this.session?.prompt(text, imgs ? { images: imgs } : undefined);
 		} catch (err) {
 			this.onEvent({ type: "error", message: err instanceof Error ? err.message : String(err) });
 		}
+	}
+
+	/** Token usage + cost + context-window fill for the active session (composer usage readout). */
+	getStats(): UsageDto {
+		const s = this.session?.getSessionStats();
+		const ctx = s?.contextUsage;
+		return {
+			input: s?.tokens.input ?? 0,
+			output: s?.tokens.output ?? 0,
+			cacheRead: s?.tokens.cacheRead ?? 0,
+			cacheWrite: s?.tokens.cacheWrite ?? 0,
+			total: s?.tokens.total ?? 0,
+			cost: s?.cost ?? 0,
+			contextTokens: ctx?.tokens ?? null,
+			contextWindow: ctx?.contextWindow ?? 0,
+			contextPercent: ctx?.percent ?? null,
+		};
 	}
 
 	async abort(): Promise<void> {
