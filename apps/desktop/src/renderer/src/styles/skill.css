@@ -1,0 +1,239 @@
+/*
+ * Skill activation card — pi is skill-driven, so this is intentionally the most vivid, animated
+ * surface in the thread. Warm palette only (terracotta → coral → gold → sage), per DESIGN.md.
+ */
+
+@property --skill-angle {
+	syntax: "<angle>";
+	initial-value: 0deg;
+	inherits: false;
+}
+
+.skill-card {
+	position: relative;
+	border-radius: var(--r-lg);
+	background: linear-gradient(135deg, color-mix(in srgb, var(--brand-coral) 12%, var(--surface)), var(--surface) 62%);
+	overflow: hidden;
+	isolation: isolate;
+}
+
+/* Animated gradient ring (mask trick keeps only the border visible). */
+.skill-card::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	border-radius: inherit;
+	padding: 1.5px;
+	background: conic-gradient(
+		from var(--skill-angle),
+		var(--brand),
+		var(--brand-coral),
+		#e0a35e,
+		#7d9678,
+		var(--brand)
+	);
+	-webkit-mask:
+		linear-gradient(#000 0 0) content-box,
+		linear-gradient(#000 0 0);
+	-webkit-mask-composite: xor;
+	mask-composite: exclude;
+}
+
+/* Soft inner wash that drifts while the skill is loading. */
+.skill-card::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	border-radius: inherit;
+	background: radial-gradient(60% 120% at 0% 0%, color-mix(in srgb, var(--brand) 14%, transparent), transparent 60%);
+	opacity: 0;
+	transition: opacity 0.4s var(--ease);
+}
+
+.skill-head {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-5);
+	width: 100%;
+	background: transparent;
+	border: none;
+	padding: var(--sp-5) var(--sp-6);
+	text-align: left;
+}
+
+.skill-spark {
+	flex: 0 0 auto;
+	width: 30px;
+	height: 30px;
+	border-radius: var(--r-md);
+	display: grid;
+	place-items: center;
+	color: var(--on-brand);
+	background: linear-gradient(135deg, var(--brand), var(--brand-coral));
+	box-shadow: 0 3px 12px -3px color-mix(in srgb, var(--brand) 55%, transparent);
+}
+
+.skill-meta {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+}
+.skill-overline {
+	font-size: var(--fs-overline);
+	letter-spacing: 0.6px;
+	text-transform: uppercase;
+	font-weight: 600;
+	color: var(--brand);
+}
+.skill-name {
+	font-family: var(--font-serif);
+	font-weight: 600;
+	font-size: var(--fs-feature);
+	line-height: var(--lh-snug);
+	color: var(--text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.skill-status {
+	flex: 0 0 auto;
+	display: grid;
+	place-items: center;
+	color: var(--error);
+}
+.skill-chev {
+	flex: 0 0 auto;
+	color: var(--text-3);
+	transition: transform 0.18s var(--ease);
+}
+.skill-chev.open {
+	transform: rotate(90deg);
+}
+
+.skill-peek {
+	padding: 0 var(--sp-6) var(--sp-5) 51px;
+	margin-top: -2px;
+	font-family: var(--font-mono);
+	font-size: 11.5px;
+	color: var(--text-3);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.skill-body {
+	margin: 0;
+	padding: var(--sp-6);
+	border-top: 1px solid color-mix(in srgb, var(--brand) 18%, var(--border));
+	font-family: var(--font-mono);
+	font-size: var(--fs-code);
+	line-height: 1.55;
+	color: var(--text-2);
+	max-height: 360px;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+/* ---------- Activating: louder + vivid (motion is layered on below when the OS allows it) ---------- */
+.skill-pending::after {
+	opacity: 1;
+}
+.skill-pending .skill-name {
+	background: linear-gradient(
+		90deg,
+		var(--brand) 0%,
+		var(--brand-coral) 28%,
+		#e0a35e 50%,
+		var(--brand-coral) 72%,
+		var(--brand) 100%
+	);
+	background-size: 220% 100%;
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+/* ---------- Settled (success keeps a static vivid ring; error tints red) ---------- */
+.skill-error::before {
+	background: conic-gradient(from 180deg, var(--error), color-mix(in srgb, var(--error) 50%, #e0a35e), var(--error));
+}
+.skill-error .skill-spark {
+	background: linear-gradient(135deg, var(--error), color-mix(in srgb, var(--error) 70%, var(--brand-coral)));
+	box-shadow: 0 3px 12px -3px color-mix(in srgb, var(--error) 55%, transparent);
+}
+.skill-error .skill-overline {
+	color: var(--error);
+}
+
+@keyframes skill-spin {
+	to {
+		--skill-angle: 360deg;
+	}
+}
+@keyframes skill-in {
+	from {
+		opacity: 0;
+		transform: translateY(6px) scale(0.97);
+	}
+}
+@keyframes skill-glow {
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 0%, transparent);
+	}
+	50% {
+		box-shadow: 0 8px 30px -8px color-mix(in srgb, var(--brand) 48%, transparent);
+	}
+}
+@keyframes skill-breathe {
+	0%,
+	100% {
+		opacity: 0.55;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+@keyframes skill-twinkle {
+	0%,
+	100% {
+		transform: scale(1) rotate(0deg);
+	}
+	50% {
+		transform: scale(1.14) rotate(14deg);
+	}
+}
+@keyframes skill-shimmer {
+	to {
+		background-position: -220% 0;
+	}
+}
+
+/* Motion is opt-in: every rule above is legible while static; these add life when the OS allows it. */
+@media (prefers-reduced-motion: no-preference) {
+	.skill-card {
+		animation: skill-in 0.42s var(--ease) both;
+	}
+	.skill-pending {
+		animation:
+			skill-in 0.42s var(--ease) both,
+			skill-glow 2.2s ease-in-out infinite;
+	}
+	.skill-pending::before {
+		animation: skill-spin 3.2s linear infinite;
+	}
+	.skill-pending::after {
+		animation: skill-breathe 2.2s ease-in-out infinite;
+	}
+	.skill-pending .skill-spark {
+		animation: skill-twinkle 1.6s ease-in-out infinite;
+	}
+	.skill-pending .skill-name {
+		animation: skill-shimmer 2.4s linear infinite;
+	}
+}

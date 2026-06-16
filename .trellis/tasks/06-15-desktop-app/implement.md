@@ -110,6 +110,27 @@ Goal: no hardcoded provider; the app uses pi's own config so any provider/custom
       ignores currentCwd); current project shown only via a terracotta "current" badge + brand folder icon;
       each group pins the 4 most-recent chats (`ProjectGroup` subcomponent), the rest fold under a
       "Show N more…/Show less" toggle. Verified across 3 projects (overflow + expand screenshotted).
+- [x] **Skill-activation card (pi is skill-driven)**: a skill is invoked when the model `read`s a
+      SKILL.md (see coding-agent `formatSkillsForPrompt`). `skillActivation()` in `toolText.ts` detects
+      `read` + path basename `SKILL.md` (or a `.md` under a `skills/` dir) → routes to a dedicated
+      `SkillCard` instead of the plain `ToolChip`. Deliberately the loudest surface in the thread:
+      animated conic gradient ring (`@property --skill-angle`), pulsing glow, breathing inner wash,
+      shimmering gradient serif title, twinkling sparkle badge — ALL gated behind
+      `@media (prefers-reduced-motion: no-preference)`; static fallback still vivid. Rich motion plays
+      during `pending` (activating); `success`/`error` settle to a static vivid/red ring. `skill.css`,
+      `IconSparkle`. Verified on a real session (`tavily-search`) in both light + dark themes.
+- [x] **LaTeX math in markdown**: `Markdown.tsx` now uses `remark-math` + `rehype-katex`
+      (`throwOnError:false`, `strict:false`) with `katex/dist/katex.min.css` imported; supports
+      `$inline$`, `$$display$$`, `\( \)`, `\[ \]`. KaTeX fonts bundle into the renderer build; `.md
+      .katex-display` scrolls on overflow. Deps (devDependencies): katex 0.16, rehype-katex 7,
+      remark-math 6. Verified rendering inline + display equations (fractions, integrals, sums, vectors).
+- [x] **Multi-line `$$` display-math fix**: LLMs glue `$$` to content over multiple lines
+      (`$$J = \begin{bmatrix} … \\ … \end{bmatrix}$$`); micromark flow-math reads the opening line's
+      tail as meta and never finds a lone-`$$` close, so it swallows the rest of the message into one
+      broken block KaTeX paints red. `Markdown.tsx` `normalizeMathBlocks()` rewrites ONLY multi-line
+      `$$` blocks so each delimiter sits on its own line (well-formed flow math); single-line `$$…$$`,
+      inline `$…$`, table cells, and code spans/fences are left untouched. Verified on the real
+      "搜索介绍3dgs" session — `\begin{cases}`, `\begin{bmatrix}`, `\boxed{}` now render cleanly, no red wall.
 
 ## Milestone M3 — Multi-provider settings UI  ✅ DONE (model picker / keys / custom endpoint)
 - [x] Settings slide-over (`SettingsPanel`): model picker over `listModels()` (975 grouped by provider,

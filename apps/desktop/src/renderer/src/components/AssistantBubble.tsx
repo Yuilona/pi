@@ -1,8 +1,10 @@
 import type { IpcMessage } from "@shared/ipc";
 import { BashCard } from "@/components/BashCard";
 import { Markdown } from "@/components/Markdown";
+import { SkillCard } from "@/components/SkillCard";
 import { ThinkingBlock } from "@/components/ThinkingBlock";
 import { ToolChip } from "@/components/ToolChip";
+import { skillActivation } from "@/components/toolText";
 import type { ToolState } from "@/state/chatReducer";
 
 export function AssistantBubble({ message, tools }: { message: IpcMessage; tools: Record<string, ToolState> }) {
@@ -20,6 +22,8 @@ export function AssistantBubble({ message, tools }: { message: IpcMessage; tools
 							args: b.args,
 							status: "pending" as const,
 						};
+						const skill = skillActivation(tool);
+						if (skill) return <SkillCard key={b.id} tool={tool} skill={skill} />;
 						return b.name === "bash" ? <BashCard key={b.id} tool={tool} /> : <ToolChip key={b.id} tool={tool} />;
 					}
 					return null;

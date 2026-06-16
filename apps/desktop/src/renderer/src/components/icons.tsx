@@ -116,3 +116,10 @@ export const IconTool = (p: SVGProps<SVGSVGElement>) => (
 		<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.3 2.3-2-2 2.3-2.3Z" />
 	</svg>
 );
+
+export const IconSparkle = (p: SVGProps<SVGSVGElement>) => (
+	<svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor" {...p} aria-hidden="true">
+		<path d="M12 2.4c.45 4 2.1 5.65 6.1 6.1-4 .45-5.65 2.1-6.1 6.1-.45-4-2.1-5.65-6.1-6.1 4-.45 5.65-2.1 6.1-6.1Z" />
+		<path d="M18.6 13.4c.22 1.9 1.1 2.78 3 3-1.9.22-2.78 1.1-3 3-.22-1.9-1.1-2.78-3-3 1.9-.22 2.78-1.1 3-3Z" />
+	</svg>
+);

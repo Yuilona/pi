@@ -1,12 +1,69 @@
+import "katex/dist/katex.min.css";
 import type { AnchorHTMLAttributes } from "react";
 import ReactMarkdown from "react-markdown";
+import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+
+// remark-math parses $inline$ / $$display$$ (and \( \), \[ \]); rehype-katex renders them with KaTeX.
+// throwOnError:false → malformed LaTeX shows in-place in error color instead of breaking the message.
+const REMARK = [remarkGfm, remarkMath];
+const REHYPE = [[rehypeKatex, { throwOnError: false, strict: false }]] as never;
+
+/**
+ * LLMs routinely emit multi-line display math with the `$$` glued to the content, e.g.
+ *   $$J = \begin{bmatrix} ... \\ ... \end{bmatrix}$$
+ * micromark's flow-math then reads the opening line's tail as "meta" and never sees a valid close
+ * (a close must be `$$` alone on its line), so it swallows the rest of the document into one broken
+ * block that KaTeX renders as a wall of red. Normalizing multi-line `$$` blocks so each delimiter sits
+ * on its own line turns them into well-formed flow math. Single-line `$$…$$` (which already works, and
+ * may live inside table cells) and inline `$…$` are left untouched; code spans/fences are protected.
+ */
+function normalizeMathBlocks(input: string): string {
+	// Split out fenced code blocks and inline code so we never rewrite `$$` inside them.
+	const protectedSpans = /(```[\s\S]*?```|`[^`\n]*`)/g;
+	return input
+		.split(protectedSpans)
+		.map((segment, i) => (i % 2 === 1 ? segment : fixMultilineDisplay(segment)))
+		.join("");
+}
+
+function fixMultilineDisplay(text: string): string {
+	let out = "";
+	let i = 0;
+	while (i < text.length) {
+		if (text[i] === "$" && text[i + 1] === "$") {
+			const close = text.indexOf("$$", i + 2);
+			if (close === -1) {
+				out += text.slice(i);
+				break;
+			}
+			const inner = text.slice(i + 2, close);
+			if (inner.includes("\n")) {
+				const before = out.replace(/[ \t]+$/, "");
+				const lead = before === "" || before.endsWith("\n") ? "" : "\n";
+				const body = inner.replace(/^[ \t]*\n?/, "").replace(/\n?[ \t]*$/, "");
+				out = `${before}${lead}$$\n${body}\n$$`;
+				i = close + 2;
+				if (i < text.length && text[i] !== "\n") out += "\n";
+			} else {
+				out += text.slice(i, close + 2);
+				i = close + 2;
+			}
+		} else {
+			out += text[i];
+			i += 1;
+		}
+	}
+	return out;
+}
 
 export function Markdown({ text }: { text: string }) {
 	return (
 		<div className="md">
 			<ReactMarkdown
-				remarkPlugins={[remarkGfm]}
+				remarkPlugins={REMARK}
+				rehypePlugins={REHYPE}
 				components={{
 					a: (props: AnchorHTMLAttributes<HTMLAnchorElement>) => (
 						<a {...props} target="_blank" rel="noreferrer">
@@ -15,7 +72,7 @@ export function Markdown({ text }: { text: string }) {
 					),
 				}}
 			>
-				{text}
+				{normalizeMathBlocks(text)}
 			</ReactMarkdown>
 		</div>
 	);

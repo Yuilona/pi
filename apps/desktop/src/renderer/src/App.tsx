@@ -1,6 +1,7 @@
 import "@/styles/app.css";
 import "@/styles/chat.css";
 import "@/styles/tools.css";
+import "@/styles/skill.css";
 import type {
 	ApprovalDecision,
 	ApprovalRequest,
