@@ -47,23 +47,54 @@ function persist(cfg: ProxyConfig): void {
 }
 
 /**
- * Route the main process's outbound fetch through an HTTP proxy. pi's OpenAI SDK reads
- * globalThis.fetch and builds a fresh client per request, so swapping the global takes effect on the
- * next message with no session rebuild. We bind undici's OWN fetch to a ProxyAgent (both from the same
- * undici package) — feeding a standalone-undici ProxyAgent to Node's bundled fetch throws a dispatcher
- * version mismatch, so we route through undici end-to-end. Disabling restores the original fetch.
+ * Some OpenAI-compatible gateways (e.g. new-api / duckcoding) strict-validate tool JSON Schemas and
+ * reject a function whose `parameters` omits `required` — they read the missing field as null and fail
+ * with `null is not of type "array"`. pi omits `required` for all-optional tools (e.g. `ls`). Normalize
+ * the outgoing chat/responses payload so every object-typed tool schema carries a `required` array.
  */
+function normalizeToolSchemas(init: any): any {
+	if (!init || typeof init.body !== "string" || !init.body.includes('"tools"')) return init;
+	try {
+		const payload = JSON.parse(init.body);
+		if (!Array.isArray(payload.tools)) return init;
+		let changed = false;
+		for (const tool of payload.tools) {
+			const params = tool?.function?.parameters ?? tool?.parameters;
+			if (params && params.type === "object" && !Array.isArray(params.required)) {
+				params.required = [];
+				changed = true;
+			}
+		}
+		if (changed) return { ...init, body: JSON.stringify(payload) };
+	} catch {
+		// leave the body untouched on any parse issue
+	}
+	return init;
+}
+
+/**
+ * Install the global fetch the pi/OpenAI SDK will use. It always normalizes tool schemas (so strict
+ * gateways accept pi's tools) and, when a proxy is configured, routes through it via undici's ProxyAgent.
+ * pi builds a fresh client per request and reads globalThis.fetch then, so this takes effect on the next
+ * message with no session rebuild.
+ */
+function installFetch(transport: (input: any, init: any) => Promise<any>): void {
+	globalThis.fetch = ((input: any, init?: any) =>
+		transport(input, normalizeToolSchemas(init))) as unknown as typeof fetch;
+}
+
 export function applyProxy(cfg: ProxyConfig): void {
 	currentAgent?.close().catch(() => {});
 	currentAgent = undefined;
-	if (cfg.enabled && cfg.url) {
-		const agent = new ProxyAgent(cfg.url);
+	// Enabling without an explicit URL falls back to the env proxy (works only if the app process
+	// actually inherited HTTPS_PROXY — GUI launches usually don't, so the URL must be set in Settings).
+	const url = cfg.url || (cfg.enabled ? detectEnvProxy() : "");
+	if (cfg.enabled && url) {
+		const agent = new ProxyAgent(url);
 		currentAgent = agent;
-		// Bridge undici's fetch types to the DOM fetch shape (noExplicitAny is off for this app).
-		globalThis.fetch = ((input: any, init?: any) =>
-			undiciFetch(input, { ...init, dispatcher: agent })) as unknown as typeof fetch;
+		installFetch((input, init) => undiciFetch(input, { ...init, dispatcher: agent }));
 	} else {
-		globalThis.fetch = originalFetch;
+		installFetch((input, init) => originalFetch(input, init));
 	}
 }
 

@@ -345,6 +345,12 @@
 	margin-top: var(--sp-4);
 	line-height: 1.5;
 }
+.hint-warn {
+	color: var(--brand);
+	background: color-mix(in srgb, var(--brand) 9%, transparent);
+	border-radius: var(--r-md);
+	padding: var(--sp-4) var(--sp-5);
+}
 
 /* ---- Permission mode list ---- */
 .mode-list {

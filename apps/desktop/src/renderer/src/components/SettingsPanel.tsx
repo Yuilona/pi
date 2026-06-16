@@ -454,6 +454,13 @@ export function SettingsPanel(props: SettingsPanelProps) {
 								onBlur={() => updateProxy({ url: proxy.url.trim() })}
 							/>
 						</div>
+						{proxy.enabled && !proxy.url && !proxy.envProxy && (
+							<div className="hint hint-warn">
+								Proxy is on but no URL is set — none was detected from your environment (GUI launches don't
+								inherit your shell's HTTPS_PROXY). Type one above (e.g. http://127.0.0.1:10808); until then,
+								requests still go direct.
+							</div>
+						)}
 						<div className="hint">
 							Sends the app's API requests through an HTTP proxy (e.g. your local 127.0.0.1:10808) — use this
 							instead of TUN mode when an endpoint is only reachable through your proxy. Takes effect on your

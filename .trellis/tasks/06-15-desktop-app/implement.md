@@ -149,6 +149,19 @@ Goal: no hardcoded provider; the app uses pi's own config so any provider/custom
       toggle, `.key-more`). A fresh user with none configured sees all (no confusing toggle). Cuts the
       list from ~38 rows to the few configured. (Model picker already hid no-key providers via showAll.)
       Verified: shows "4 configured" + "· 34" fold for this user's setup.
+- [x] **Network proxy (Settings)** + **strict tool-schema fix** (`src/main/agent/proxy.ts`): a toggle
+      routes the main process's outbound fetch through an HTTP proxy by swapping `globalThis.fetch` for
+      undici's own `fetch` + `ProxyAgent` (same npm undici pkg — Node's bundled fetch + a standalone undici
+      ProxyAgent throws a dispatcher version mismatch). Config in `userData/proxy.json`, applied at startup
+      + on toggle (IPC `getProxyConfig`/`setProxyConfig`); empty-URL falls back to env proxy with an
+      on-but-no-URL warning. **Bug fixed while debugging "proxy on → no reply":** the proxy was fine — the
+      real cause was duckcoding's new-api gateway STRICT-validating tool JSON Schemas. pi's `ls` tool has
+      all-optional params so it omits `required`; the gateway reads the missing field as null → HTTP 400
+      `Invalid schema for function 'ls': null is not of type "array"` → pi silently turns the 400 into an
+      empty assistant message (no error event). (Proxy-off only "retried" because the direct request never
+      reached the server.) FIX: `normalizeToolSchemas()` in the outbound fetch wrapper adds `required: []`
+      to any object tool schema missing it — runs proxy on OR off, keeps all 7 tools, pi untouched.
+      Verified end-to-end (home cwd + all 7 tools + proxy → full reply).
 
 ## Milestone M3 — Multi-provider settings UI  ✅ DONE (model picker / keys / custom endpoint)
 - [x] Settings slide-over (`SettingsPanel`): model picker over `listModels()` (975 grouped by provider,
