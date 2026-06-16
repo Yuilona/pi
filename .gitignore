@@ -17,10 +17,18 @@ packages/*/dist-firefox/
 .vscode/
 .zed/
 .idea/
-.claude/
 *.swp
 *.swo
 *~
+
+# Claude Code: ignore local/runtime files, but SHARE the Trellis integration so
+# the workflow (hooks, subagents, settings) travels with the repo to other machines.
+.claude/*
+!.claude/agents/
+!.claude/commands/
+!.claude/hooks/
+!.claude/skills/
+!.claude/settings.json
 
 # Package specific
 .npm/
