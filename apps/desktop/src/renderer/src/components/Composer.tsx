@@ -301,7 +301,13 @@ export function Composer({
 							{(attachments ?? []).map((a, i) => (
 								<div className="attach" key={a.data.slice(0, 32)}>
 									<img src={`data:${a.mimeType};base64,${a.data}`} alt="attachment" />
-									<button type="button" className="attach-x" onClick={() => onRemoveImage?.(i)} title="Remove">
+									<button
+										type="button"
+										className="attach-x"
+										onClick={() => onRemoveImage?.(i)}
+										title="Remove"
+										aria-label="Remove image"
+									>
 										<IconX />
 									</button>
 								</div>
@@ -315,6 +321,7 @@ export function Composer({
 							className="attach-btn"
 							onClick={() => fileRef.current?.click()}
 							title="Attach image"
+							aria-label="Attach image"
 						>
 							<IconImage />
 						</button>
@@ -341,11 +348,18 @@ export function Composer({
 							autoFocus
 						/>
 						{streaming ? (
-							<button type="button" className="send" onClick={onStop} title="Stop">
+							<button type="button" className="send" onClick={onStop} title="Stop" aria-label="Stop generating">
 								<IconStop />
 							</button>
 						) : (
-							<button type="button" className="send" disabled={!canSend} onClick={onSubmit} title="Send (Enter)">
+							<button
+								type="button"
+								className="send"
+								disabled={!canSend}
+								onClick={onSubmit}
+								title="Send (Enter)"
+								aria-label="Send message"
+							>
 								<IconArrowUp />
 							</button>
 						)}

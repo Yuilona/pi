@@ -7,7 +7,7 @@ import type {
 	ProxyConfigDto,
 	ThinkingLevelDto,
 } from "@shared/ipc";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	IconCheck,
 	IconChevron,
@@ -18,6 +18,7 @@ import {
 	IconSun,
 	IconTrash,
 } from "@/components/icons";
+import { useModalFocus } from "@/state/useModalFocus";
 import { useView } from "@/state/viewPrefs";
 
 const THINKING: ThinkingLevelDto[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
@@ -184,13 +185,23 @@ export function SettingsPanel(props: SettingsPanelProps) {
 	const noneReady = readyKeys.length === 0;
 	const visibleKeyProviders = showAllKeys || noneReady ? providers : readyKeys;
 
+	const sheetRef = useRef<HTMLElement>(null);
+	useModalFocus(sheetRef);
+	useEffect(() => {
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === "Escape") onClose();
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [onClose]);
+
 	return (
 		<>
 			<button type="button" className="sheet-backdrop" onClick={onClose} aria-label="Close settings" />
-			<aside className="sheet">
+			<aside className="sheet" ref={sheetRef} role="dialog" aria-modal="true" aria-label="Settings" tabIndex={-1}>
 				<div className="sheet-head">
 					<h2>Settings</h2>
-					<button type="button" className="icon-btn" onClick={onClose} title="Close">
+					<button type="button" className="icon-btn" onClick={onClose} title="Close" aria-label="Close settings">
 						<IconClose />
 					</button>
 				</div>
@@ -311,6 +322,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 										className="icon-btn danger"
 										onClick={() => void removeKey(p.provider)}
 										title="Remove stored key"
+										aria-label="Remove stored key"
 									>
 										<IconTrash />
 									</button>

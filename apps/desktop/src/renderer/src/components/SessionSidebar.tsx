@@ -80,7 +80,13 @@ export function SessionSidebar({
 		<aside className="sidebar">
 			<div className="sidebar-head">
 				<span className="sidebar-title">Chats</span>
-				<button type="button" className="icon-btn" onClick={onNew} title="New conversation">
+				<button
+					type="button"
+					className="icon-btn"
+					onClick={onNew}
+					title="New conversation"
+					aria-label="New conversation"
+				>
 					<IconPlus />
 				</button>
 			</div>
@@ -152,6 +158,7 @@ function ProjectGroup({
 					className="sess-group-add"
 					onClick={() => onNewInProject(group.cwd)}
 					title="New chat in this project"
+					aria-label="New chat in this project"
 				>
 					<IconPlus />
 				</button>
@@ -173,6 +180,7 @@ function ProjectGroup({
 						className="icon-btn danger sess-del"
 						onClick={() => onRequestDelete(s)}
 						title="Delete chat"
+						aria-label="Delete chat"
 					>
 						<IconTrash />
 					</button>

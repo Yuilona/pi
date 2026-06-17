@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useModalFocus } from "@/state/useModalFocus";
 
 interface ConfirmDialogProps {
 	title: string;
@@ -21,6 +22,9 @@ export function ConfirmDialog({
 	onConfirm,
 	onCancel,
 }: ConfirmDialogProps) {
+	const cardRef = useRef<HTMLDivElement>(null);
+	useModalFocus(cardRef);
+
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
 			if (e.key === "Enter") onConfirm();
@@ -34,7 +38,14 @@ export function ConfirmDialog({
 		<>
 			<button type="button" className="approval-backdrop" aria-label={cancelLabel} onClick={onCancel} />
 			<div className="approval">
-				<div className="approval-card">
+				<div
+					className="approval-card"
+					ref={cardRef}
+					role="dialog"
+					aria-modal="true"
+					aria-label={title}
+					tabIndex={-1}
+				>
 					<div className="approval-title">{title}</div>
 					{message && <div className="approval-tool">{message}</div>}
 					<div className="approval-actions">

@@ -1,6 +1,7 @@
 import type { ApprovalDecision, ApprovalRequest } from "@shared/ipc";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { IconTool } from "@/components/icons";
+import { useModalFocus } from "@/state/useModalFocus";
 
 const VERBS: Record<string, string> = {
 	bash: "run a command",
@@ -15,6 +16,9 @@ export function ApprovalDialog({
 	request: ApprovalRequest;
 	onResolve: (decision: ApprovalDecision) => void;
 }) {
+	const cardRef = useRef<HTMLDivElement>(null);
+	useModalFocus(cardRef);
+
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
 			if (e.key === "Enter") onResolve("allow");
@@ -35,7 +39,14 @@ export function ApprovalDialog({
 		<>
 			<div className="approval-backdrop" />
 			<div className="approval">
-				<div className="approval-card">
+				<div
+					className="approval-card"
+					ref={cardRef}
+					role="dialog"
+					aria-modal="true"
+					aria-label="Tool approval"
+					tabIndex={-1}
+				>
 					<div className="approval-head">
 						<span className="approval-ic">
 							<IconTool />

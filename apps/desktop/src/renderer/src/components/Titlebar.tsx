@@ -34,7 +34,13 @@ export function Titlebar({
 
 	return (
 		<header className="titlebar">
-			<button type="button" className="icon-btn" onClick={onToggleSidebar} title="Toggle chats">
+			<button
+				type="button"
+				className="icon-btn"
+				onClick={onToggleSidebar}
+				title="Toggle chats"
+				aria-label="Toggle chats"
+			>
 				<IconSidebar />
 			</button>
 			<div className="wordmark">
@@ -49,7 +55,13 @@ export function Titlebar({
 
 			<div className="spacer" />
 
-			<button type="button" className="icon-btn" onClick={onNewChat} title="New conversation">
+			<button
+				type="button"
+				className="icon-btn"
+				onClick={onNewChat}
+				title="New conversation"
+				aria-label="New conversation"
+			>
 				<IconPlus />
 			</button>
 			<button
@@ -57,21 +69,40 @@ export function Titlebar({
 				className="icon-btn"
 				onClick={onToggleTheme}
 				title={theme === "light" ? "Dark theme" : "Light theme"}
+				aria-label={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
 			>
 				{theme === "light" ? <IconMoon /> : <IconSun />}
 			</button>
-			<button type="button" className="icon-btn" onClick={onOpenSettings} title="Settings">
+			<button type="button" className="icon-btn" onClick={onOpenSettings} title="Settings" aria-label="Settings">
 				<IconSettings />
 			</button>
 
 			<div className="winctl">
-				<button type="button" className="icon-btn" onClick={() => win?.minimize()} title="Minimize">
+				<button
+					type="button"
+					className="icon-btn"
+					onClick={() => win?.minimize()}
+					title="Minimize"
+					aria-label="Minimize"
+				>
 					<IconMin />
 				</button>
-				<button type="button" className="icon-btn" onClick={() => win?.toggleMaximize()} title="Maximize">
+				<button
+					type="button"
+					className="icon-btn"
+					onClick={() => win?.toggleMaximize()}
+					title="Maximize"
+					aria-label="Maximize"
+				>
 					<IconMax />
 				</button>
-				<button type="button" className="icon-btn" onClick={() => win?.close()} title="Close">
+				<button
+					type="button"
+					className="icon-btn"
+					onClick={() => win?.close()}
+					title="Close"
+					aria-label="Close window"
+				>
 					<IconClose />
 				</button>
 			</div>

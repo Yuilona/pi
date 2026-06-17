@@ -289,3 +289,36 @@ button {
 	text-transform: uppercase;
 	color: var(--text-3);
 }
+
+/* ============================ Accessibility ============================ */
+/* Keyboard focus ring — only renders for keyboard / AT users (:focus-visible), never on mouse click, so
+   the warm mouse aesthetic is untouched. The outline follows each control's border-radius in Chromium. */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+	outline: 2px solid var(--focus);
+	outline-offset: 2px;
+}
+
+/* Honor "reduce motion": collapse every animation/transition app-wide (WCAG 2.3.3). The `no-preference`
+   blocks elsewhere (skill card, sidebar retitle sweep) simply don't apply under `reduce`. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		/* !important is required: a 0-specificity universal selector must override per-element
+		   animation/transition declarations (e.g. .dotpulse) — this is the canonical WCAG 2.3.3 reset. */
+		/* biome-ignore lint/complexity/noImportantStyles: WCAG reduced-motion reset must override per-element rules */
+		animation-duration: 0.001ms !important;
+		/* biome-ignore lint/complexity/noImportantStyles: WCAG reduced-motion reset must override per-element rules */
+		animation-iteration-count: 1 !important;
+		/* biome-ignore lint/complexity/noImportantStyles: WCAG reduced-motion reset must override per-element rules */
+		transition-duration: 0.001ms !important;
+		/* biome-ignore lint/complexity/noImportantStyles: WCAG reduced-motion reset must override per-element rules */
+		scroll-behavior: auto !important;
+	}
+}
