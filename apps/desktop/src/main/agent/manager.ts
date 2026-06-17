@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type AssistantMessage, complete } from "@earendil-works/pi-ai";
+import { complete } from "@earendil-works/pi-ai";
 import {
 	type AgentSession,
 	createAgentSession,
@@ -37,6 +37,7 @@ import {
 	removeApiKey,
 } from "./auth.js";
 import { makeIdFactory, mapEvent, mapTranscript } from "./mappers.js";
+import { assistantText, cleanTitle, firstUserText } from "./titleUtils.js";
 
 // Full coding toolset. bash/edit/write are gated by the approval extension; read-only tools auto-run.
 const TOOLS = ["read", "grep", "find", "ls", "bash", "edit", "write"];
@@ -59,44 +60,6 @@ const TITLE_SYSTEM_PROMPT =
 	"You generate a short, specific title for a chat from the user's first message. " +
 	"Reply with ONLY the title: 3-6 words, no surrounding quotes, no trailing punctuation, " +
 	"in the same language as the user.";
-
-/** First user message's text (handles both string and content-block forms; typed structurally so the
- *  session's broader AgentMessage[] is accepted). */
-function firstUserText(messages: readonly unknown[]): string | undefined {
-	for (const raw of messages) {
-		const m = raw as { role?: string; content?: unknown };
-		if (m.role !== "user") continue;
-		if (typeof m.content === "string") return m.content.trim() || undefined;
-		if (!Array.isArray(m.content)) return undefined;
-		const text = m.content
-			.filter((b) => (b as { type?: string }).type === "text")
-			.map((b) => (b as { text?: string }).text ?? "")
-			.join(" ")
-			.trim();
-		return text || undefined;
-	}
-	return undefined;
-}
-
-/** Concatenated text of an assistant reply. */
-function assistantText(msg: AssistantMessage): string {
-	return msg.content
-		.filter((b) => b.type === "text")
-		.map((b) => (b as { text: string }).text)
-		.join(" ")
-		.trim();
-}
-
-/** Normalize a model-generated title: single line, no wrapping quotes / trailing punctuation, capped. */
-function cleanTitle(raw: string): string {
-	return raw
-		.replace(/\s+/g, " ")
-		.trim()
-		.replace(/^["'“”‘’`]+|["'“”‘’`]+$/g, "")
-		.replace(/[.。!！?？,，;；:：]+$/g, "")
-		.trim()
-		.slice(0, 60);
-}
 
 export class AgentManager {
 	private auth: AuthBundle = createAuth();

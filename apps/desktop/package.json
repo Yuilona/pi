@@ -16,6 +16,7 @@
     "typecheck": "pnpm run typecheck:node && pnpm run typecheck:web",
     "lint": "biome check .",
     "format": "biome check --write .",
+    "test": "vitest --run",
     "package": "electron-vite build && electron-builder --win"
   },
   "dependencies": {
@@ -45,7 +46,8 @@
     "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",
     "typescript": "^5.9.3",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "vitest": "3.2.4"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
