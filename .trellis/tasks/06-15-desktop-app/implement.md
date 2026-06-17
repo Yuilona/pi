@@ -183,6 +183,62 @@ Goal: no hardcoded provider; the app uses pi's own config so any provider/custom
       `manager.setCwd(cwd)` (fresh session in that dir); `AppStateDto.appDir` exposes the app dir to the
       renderer; `newChatInCwd` in App routes all new-chat entry points. Verified per-project "+" renders.
 
+## Multi-dimensional code audit + fixes (batches A–D)  ✅ DONE
+Ran a Workflow-orchestrated review of the whole `apps/desktop` (~6.6k lines): first a per-commit review of
+the freshly-pulled work, then a 9-dimension audit (security/Electron, architecture/IPC boundary, concurrency,
+React correctness, resources/perf, error handling, type safety, UX/a11y/DESIGN, maintainability) with **every
+medium+ finding adversarially verified against the live code** (default-skeptic, file:line evidence). 26
+findings confirmed (2 high, ~10 medium, ~14 low after severity re-calibration — most "scary" security items
+dropped to low because they require a renderer compromise, and the renderer is trusted + pi-free). Each batch
+kept typecheck/lint/build (and tests from D2) green before commit.
+
+- [x] **Pre-audit commit review** (`f2ad2ca`): reviewing the 5 pulled commits found two confirmed bugs +
+      one cosmetic mismatch, all in `MessageList.tsx`/`App.tsx`: (1) per-token `scrollIntoView` had no
+      scroll-position guard so scrolling up mid-stream got yanked back — now follows only when near the
+      bottom, except a just-sent user message / transcript load still scrolls; (2) `hasVisibleContent`
+      counted thinking text even when "show thinking" is off, so a reasoning model streaming thinking-only
+      left a blank bubble — now takes `showThinking`; (3) the retitle reveal class cleared at 1300ms while
+      the CSS sweep runs 2.5s → held to 2600ms.
+- [x] **Batch A — surface agent failures** (`b96c6f5`): H1 a failed turn (assistant `stopReason:"error"` +
+      `errorMessage`) mapped to a blank bubble and dropped the error — `mappers.ts` `assistantErrorText()`
+      now suppresses the empty `message_start` bubble and emits an `error` event at `message_end` (`aborted`
+      left alone). H2 the error/retry/compaction banners lived only inside `MessageList` (unmounted when no
+      messages) → extracted `StatusBanners` rendered in the thread AND the empty state. M2 `switchSession`
+      try/catches a missing/corrupt file (keeps the live session, `ensureSession` fallback) + `existsSync`
+      cwd guard. M3 `applyProxy` validates the scheme and builds the new `ProxyAgent` BEFORE swapping, so a
+      bad URL can't leave `globalThis.fetch` half-swapped/unset. M4 `auto_retry_end.finalError` /
+      `compaction_end.errorMessage,aborted` now flow through the DTOs and the reducer shows them.
+- [x] **Batch B — accessibility** (`90b2643`): M5 a single `:focus-visible` ring (DESIGN `--focus`) for
+      keyboard users; M6 a `useModalFocus` hook (focus-on-open, Tab trap with capture-phase stopPropagation,
+      focus restore) + `role="dialog"/aria-modal/tabIndex` on ApprovalDialog/ConfirmDialog/SettingsPanel
+      (+Escape on Settings); M7 a global `prefers-reduced-motion: reduce` reset in `base.css`; M8 `aria-label`
+      on all icon-only buttons (Titlebar/SessionSidebar/Composer/SettingsPanel); M9 `--text-3` darkened
+      `#87867f → #6f6e68` to clear WCAG AA on warm-sand.
+- [x] **Batch C — concurrency** (`ffae7ed`): M1 added an `opChain` serialization lock (`runExclusive`) so all
+      build/teardown lifecycle ops (newSession/switchSession/deleteSession/setCwd/setApiKey/setModel/
+      addCustomProvider/init + prompt's ensure step) can't interleave and leak a subscription or paint into
+      the wrong session. **prompt builds UNDER the lock but runs the turn OUTSIDE it** (a long stream never
+      blocks switching; a rejection from a torn-down session is swallowed). `deleteSession` calls the unlocked
+      `newSessionImpl` to avoid deadlocking the chain. `teardown` clears `currentSessionFile`.
+- [x] **Batch D1 — hardening + robustness** (`9517084`): `setWindowOpenHandler` opens only http/https/mailto
+      via a shared `openExternalSafe` + a `will-navigate` guard pins the app document; the session
+      subscription's dispatch body is wrapped in try/catch (a mapping failure degrades to an error event, not
+      a throw back into pi's loop); `getState` reports the live `session.thinkingLevel`; the `ViewContext`
+      value is `useMemo`'d (no re-render of every consumer each streaming tick).
+- [x] **Batch D2 — unit tests (M10)** (`bd9da1a`): added **vitest** (`test` script, `vitest.config.ts`, node
+      env, `src/**/*.test.ts`). Extracted the pure helpers into dependency-free sibling modules so they test
+      without an Electron/pi/React runtime — `mathNormalize.ts` (from Markdown.tsx), `schemaNormalize.ts`
+      (from proxy.ts), `titleUtils.ts` (firstUserText/assistantText/cleanTitle, from manager.ts); mappers was
+      already importable (type-only pi imports). **25 tests / 4 files** lock the known-hard cases: LaTeX
+      `\[ \]`/`\( \)` conversion + glued multi-line `$$` fixing (code protected), tool-schema `required:[]`
+      injection + pass-through, title cleanup + first-user-text, and the streaming id factory + transcript
+      tool-folding.
+- **Deferred (low value / behavior-changing / breakage risk — revisit on request):** strict CSP (could break
+  KaTeX fonts / dev HMR / `data:` images on a trusted pi-free renderer); constraining session paths to the
+  sessions dir (risk of breaking switch/delete if pi's layout differs); bundle code-splitting (negligible for
+  a local desktop load); image downscaling (changes user image quality); approval timeout (an indefinite wait
+  for user approval is intended); tightening proxy.ts `any` plumbing / forwarding session_info_changed.
+
 ## Milestone M3 — Multi-provider settings UI  ✅ DONE (model picker / keys / custom endpoint)
 - [x] Settings slide-over (`SettingsPanel`): model picker over `listModels()` (975 grouped by provider,
       ready/locked + custom badges, current highlighted, search + "show providers without a key").
@@ -214,6 +270,7 @@ Goal: the "wow", and a packaged app.
 - `pnpm dev`            # HMR dev run
 - `pnpm typecheck`      # tsc -b / vue-tsc-equivalent for the three tsconfigs
 - `pnpm lint`           # local biome
+- `pnpm test`           # vitest unit tests (pure helpers: math/schema/title/mappers)
 - `pnpm build`          # electron-vite build
 - `pnpm package`        # electron-builder (win)
 - Root unaffected check: from repo root `npm run check` still scopes only to `packages/**`.
