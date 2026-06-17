@@ -35,17 +35,27 @@ export function MessageList({ state }: { state: ChatState }) {
 		endRef.current?.scrollIntoView({ behavior: state.streaming ? "auto" : "smooth", block: "end" });
 	}, [state.messages, state.streaming, state.tools]);
 
-	// While streaming, follow the smoothed reveal (content grows between token updates) — but only when the
-	// user is already near the bottom, so scrolling up to read isn't fought.
+	// While streaming, follow the smoothed reveal (content grows between message updates via the typewriter,
+	// without a new dispatch) — but only when the user is already near the bottom, so scrolling up to read
+	// isn't fought. Driven by rAF (throttled to ~90ms) rather than a free-running timer, so scrollIntoView
+	// coincides with a paint frame instead of firing mid-markdown-parse and thrashing layout.
 	useEffect(() => {
 		if (!state.streaming) return;
-		const id = window.setInterval(() => {
-			const end = endRef.current;
-			const sc = end?.closest<HTMLElement>(".scroll");
-			if (!end || !sc) return;
-			if (sc.scrollHeight - sc.scrollTop - sc.clientHeight < 120) end.scrollIntoView({ block: "end" });
-		}, 90);
-		return () => window.clearInterval(id);
+		let raf = 0;
+		let lastCheck = 0;
+		const loop = (now: number) => {
+			if (now - lastCheck >= 90) {
+				lastCheck = now;
+				const end = endRef.current;
+				const sc = end?.closest<HTMLElement>(".scroll");
+				if (end && sc && sc.scrollHeight - sc.scrollTop - sc.clientHeight < 120) {
+					end.scrollIntoView({ block: "end" });
+				}
+			}
+			raf = requestAnimationFrame(loop);
+		};
+		raf = requestAnimationFrame(loop);
+		return () => cancelAnimationFrame(raf);
 	}, [state.streaming]);
 
 	const last = state.messages[state.messages.length - 1];

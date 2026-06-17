@@ -15,15 +15,28 @@ function StreamingText({ text, streaming }: { text: string; streaming: boolean }
 	return <Markdown text={shown} />;
 }
 
+interface AssistantBubbleProps {
+	message: IpcMessage;
+	tools: Record<string, ToolState>;
+	streaming?: boolean;
+}
+
+// The whole `tools` map is passed in but its reference changes on every tool/message action; comparing
+// only the tool states THIS message actually references keeps historical bubbles from re-rendering on
+// every streaming tick (the live bubble still re-renders because its `message` reference changes).
+function sameBubble(prev: AssistantBubbleProps, next: AssistantBubbleProps): boolean {
+	if (prev.message !== next.message || prev.streaming !== next.streaming) return false;
+	for (const b of next.message.content) {
+		if (b.kind === "toolCall" && prev.tools[b.id] !== next.tools[b.id]) return false;
+	}
+	return true;
+}
+
 export const AssistantBubble = memo(function AssistantBubble({
 	message,
 	tools,
 	streaming = false,
-}: {
-	message: IpcMessage;
-	tools: Record<string, ToolState>;
-	streaming?: boolean;
-}) {
+}: AssistantBubbleProps) {
 	return (
 		<div className="row assistant">
 			<div className="assistant-body">
@@ -47,4 +60,4 @@ export const AssistantBubble = memo(function AssistantBubble({
 			</div>
 		</div>
 	);
-});
+}, sameBubble);

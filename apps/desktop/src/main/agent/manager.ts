@@ -41,6 +41,13 @@ import { makeIdFactory, mapEvent, mapTranscript } from "./mappers.js";
 // Full coding toolset. bash/edit/write are gated by the approval extension; read-only tools auto-run.
 const TOOLS = ["read", "grep", "find", "ls", "bash", "edit", "write"];
 
+// Coalesce streaming message_update events before they cross IPC. pi emits one full-message update per
+// SSE delta (agent-loop.ts), so without this every token is a full re-map + structured-clone + send +
+// reducer churn (O(n^2) over a reply) — the main amplifier of choppy streaming. ~33ms (≈30Hz) keeps the
+// renderer's smoother fed without starving it; only INTERMEDIATE partials are ever dropped, never the
+// latest, and non-update events flush the pending partial first so finality/ordering is preserved.
+const STREAM_FLUSH_MS = 33;
+
 /** Short label for a session's working directory (last path segment). */
 function projectName(cwd: string): string {
 	if (!cwd) return "—";
@@ -104,6 +111,10 @@ export class AgentManager {
 	private mode: PermissionMode = "ask";
 	private sessionAllow = new Set<string>();
 	private settings: SettingsManager;
+	// Streaming message_update coalescer (latest-wins, ~30Hz). Owned by the active subscription; abort()
+	// flushes the tail, teardown() drops it (a session switch reloads the transcript anyway).
+	private updateTimer: ReturnType<typeof setTimeout> | undefined;
+	private flushPendingUpdate: (() => void) | undefined;
 
 	constructor(
 		private readonly onEvent: (e: IpcAgentEvent) => void,
@@ -186,8 +197,36 @@ export class AgentManager {
 		this.thinkingLevel = (session.thinkingLevel as ThinkingLevelDto) ?? this.thinkingLevel;
 
 		const id = makeIdFactory();
+		// Latest-wins throttle for message_update; every other event passes through immediately, flushing
+		// the pending partial first so message_end/tool/ordering events never land before the text they follow.
+		let pendingUpdate: IpcAgentEvent | null = null;
+		const flush = () => {
+			if (this.updateTimer) {
+				clearTimeout(this.updateTimer);
+				this.updateTimer = undefined;
+			}
+			if (pendingUpdate) {
+				const ev = pendingUpdate;
+				pendingUpdate = null;
+				this.onEvent(ev);
+			}
+		};
+		this.flushPendingUpdate = flush;
 		this.unsubscribe = session.subscribe((ev) => {
 			const mapped = mapEvent(ev, id);
+			if (ev.type === "message_update") {
+				if (mapped) {
+					pendingUpdate = mapped;
+					if (!this.updateTimer) {
+						this.updateTimer = setTimeout(() => {
+							this.updateTimer = undefined;
+							flush();
+						}, STREAM_FLUSH_MS);
+					}
+				}
+				return;
+			}
+			flush();
 			if (mapped) this.onEvent(mapped);
 			if (ev.type === "message_end") this.currentSessionFile = session.sessionFile;
 		});
@@ -196,6 +235,13 @@ export class AgentManager {
 	private teardown(): void {
 		this.clearPendingApprovals();
 		this.sessionAllow.clear();
+		// Drop any pending streaming partial: a teardown means a session switch/rebuild, after which the
+		// renderer reloads the transcript wholesale (a stale partial must not paint into the new session).
+		if (this.updateTimer) {
+			clearTimeout(this.updateTimer);
+			this.updateTimer = undefined;
+		}
+		this.flushPendingUpdate = undefined;
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
 		this.session?.dispose();
@@ -291,6 +337,9 @@ export class AgentManager {
 
 	async abort(): Promise<void> {
 		this.clearPendingApprovals();
+		// Deliver the last received partial before stopping, so an aborted reply shows everything that
+		// arrived rather than freezing on a throttled-away frame.
+		this.flushPendingUpdate?.();
 		await this.session?.abort();
 	}
 
