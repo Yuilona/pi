@@ -1,6 +1,7 @@
 import type { IpcMessage } from "@shared/ipc";
+import { memo } from "react";
 
-export function UserBubble({ message }: { message: IpcMessage }) {
+export const UserBubble = memo(function UserBubble({ message }: { message: IpcMessage }) {
 	const text = message.content
 		.filter((b) => b.kind === "text")
 		.map((b) => (b as { text: string }).text)
@@ -18,4 +19,4 @@ export function UserBubble({ message }: { message: IpcMessage }) {
 			{text && <div className="bubble-user selectable">{text}</div>}
 		</div>
 	);
-}
+});

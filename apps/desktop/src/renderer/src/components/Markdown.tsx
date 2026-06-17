@@ -1,5 +1,5 @@
 import "katex/dist/katex.min.css";
-import type { AnchorHTMLAttributes } from "react";
+import { type AnchorHTMLAttributes, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
@@ -76,7 +76,9 @@ function fixMultilineDisplay(text: string): string {
 	return out;
 }
 
-export function Markdown({ text }: { text: string }) {
+// Memoized: re-renders only when `text` changes, so historical messages aren't re-parsed on every
+// streaming token (react-markdown + KaTeX parsing is the main per-update cost).
+export const Markdown = memo(function Markdown({ text }: { text: string }) {
 	return (
 		<div className="md">
 			<ReactMarkdown
@@ -94,4 +96,4 @@ export function Markdown({ text }: { text: string }) {
 			</ReactMarkdown>
 		</div>
 	);
-}
+});

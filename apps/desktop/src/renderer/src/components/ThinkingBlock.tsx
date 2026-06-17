@@ -7,6 +7,9 @@ export function ThinkingBlock({ text, redacted }: { text: string; redacted?: boo
 	// Expanded by default when "show thinking" is on; collapsible per-block via override.
 	const [override, setOverride] = useState<boolean | null>(null);
 	if (!showThinking) return null;
+	// Hide empty (non-redacted) thinking blocks — e.g. the responses API's empty first-turn reasoning
+	// summary would otherwise render a contentless "Thinking" shell that flashes in and out.
+	if (!redacted && !text.trim()) return null;
 	const open = override ?? true;
 	return (
 		<div className={`thinking ${open ? "open" : ""}`}>
