@@ -55,7 +55,7 @@
 [data-theme="dark"] {
 	--bg: #141413; /* Deep Dark / Near Black */
 	--surface: #30302e; /* Dark Surface */
-	--surface-2: #30302e;
+	--surface-2: #3a3a37; /* lifted a step above --surface so hover/selected/inline-code stay visible in dark */
 	--surface-white: #30302e;
 
 	--brand: #c96442;
@@ -63,7 +63,7 @@
 
 	--text: #faf9f5; /* Ivory text on dark */
 	--text-2: #b0aea5; /* Warm Silver */
-	--text-3: #87867f;
+	--text-3: #908f87; /* nudged lighter to clear AA on the lighter dark tool/bubble surfaces */
 	--text-strong: #faf9f5;
 	--text-link: #d97757;
 	--on-brand: #faf9f5;
@@ -73,7 +73,7 @@
 	--ring: #3d3d3a;
 	--ring-deep: #4d4c48;
 
-	--error: #d97757;
+	--error: #e5564a; /* warm red tuned for the dark canvas — keep the destructive signal (was coral) */
 	--focus: #3898ec;
 
 	--tool-pending: #2a2a28;

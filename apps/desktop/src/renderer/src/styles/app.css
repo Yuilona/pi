@@ -264,19 +264,19 @@
 }
 
 .empty .mark {
-	width: 56px;
-	height: 56px;
-	border-radius: var(--r-xl);
+	width: 60px;
+	height: 60px;
+	border-radius: var(--r-2xl);
 	display: grid;
 	place-items: center;
-	background: var(--surface);
+	background: color-mix(in srgb, var(--brand) 8%, var(--surface));
 	box-shadow: var(--shadow-ring), var(--shadow-whisper);
-	margin-bottom: var(--sp-10);
+	margin-bottom: var(--sp-12);
 }
 .empty h1 {
-	font-size: clamp(34px, 6vw, var(--fs-section));
+	/* Display-size serif: book-title gravitas per DESIGN.md; let the glyphs breathe (no tight tracking). */
+	font-size: clamp(36px, 7vw, var(--fs-hero));
 	line-height: var(--lh-tight);
-	letter-spacing: -0.02em;
 }
 .empty .sub {
 	margin-top: var(--sp-6);
@@ -287,7 +287,7 @@
 }
 
 .suggestions {
-	margin-top: var(--sp-15);
+	margin-top: var(--sp-20);
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: var(--sp-6);
@@ -320,11 +320,20 @@
 	font-size: var(--fs-feature);
 	color: var(--text);
 	margin-bottom: var(--sp-2);
+	transition: color 0.18s var(--ease);
+}
+.suggestion:hover .t {
+	color: var(--brand);
+}
+.suggestion:active {
+	transform: translateY(0);
+	box-shadow: var(--shadow-ring-deep);
+	transition-duration: 0.06s;
 }
 .suggestion .d {
 	font-size: var(--fs-caption);
 	color: var(--text-2);
-	line-height: 1.45;
+	line-height: 1.5;
 }
 
 /* ============================ Composer ============================ */
@@ -720,5 +729,6 @@
 	background: var(--brand);
 }
 .mode-readonly .mode-dot {
-	background: var(--focus);
+	/* warm muted gray reads as "locked/quiet"; --focus (cool blue) is reserved for input focus only */
+	background: var(--text-2);
 }
