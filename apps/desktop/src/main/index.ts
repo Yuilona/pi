@@ -10,6 +10,17 @@ const isDev = !!process.env.ELECTRON_RENDERER_URL;
 let mainWindow: BrowserWindow | null = null;
 let manager: AgentManager | null = null;
 
+/** Open a URL in the OS browser, but only safe web/mail schemes — never hand file:, smb:, ms-msdt:,
+ * javascript:, etc. to the shell, where a crafted link could launch a local protocol handler. */
+function openExternalSafe(url: string): void {
+	try {
+		const { protocol } = new URL(url);
+		if (protocol === "https:" || protocol === "http:" || protocol === "mailto:") void shell.openExternal(url);
+	} catch {
+		// ignore malformed URLs
+	}
+}
+
 function createWindow(): BrowserWindow {
 	const win = new BrowserWindow({
 		width: 1180,
@@ -36,8 +47,19 @@ function createWindow(): BrowserWindow {
 	win.on("unmaximize", emitMaximize);
 
 	win.webContents.setWindowOpenHandler(({ url }) => {
-		shell.openExternal(url);
+		openExternalSafe(url);
 		return { action: "deny" };
+	});
+
+	// Pin the app document: never let the renderer itself be navigated away (a hijacked location would run
+	// in the preload-privileged window). Real link clicks go through the window-open handler above.
+	win.webContents.on("will-navigate", (e, url) => {
+		const devUrl = process.env.ELECTRON_RENDERER_URL;
+		const sameApp = devUrl ? url.startsWith(devUrl) : url.startsWith("file://");
+		if (!sameApp) {
+			e.preventDefault();
+			openExternalSafe(url);
+		}
 	});
 
 	if (process.env.ELECTRON_RENDERER_URL) {

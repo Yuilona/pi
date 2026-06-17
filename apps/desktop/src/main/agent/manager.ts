@@ -228,22 +228,28 @@ export class AgentManager {
 		};
 		this.flushPendingUpdate = flush;
 		this.unsubscribe = session.subscribe((ev) => {
-			const mapped = mapEvent(ev, id);
-			if (ev.type === "message_update") {
-				if (mapped) {
-					pendingUpdate = mapped;
-					if (!this.updateTimer) {
-						this.updateTimer = setTimeout(() => {
-							this.updateTimer = undefined;
-							flush();
-						}, STREAM_FLUSH_MS);
+			try {
+				const mapped = mapEvent(ev, id);
+				if (ev.type === "message_update") {
+					if (mapped) {
+						pendingUpdate = mapped;
+						if (!this.updateTimer) {
+							this.updateTimer = setTimeout(() => {
+								this.updateTimer = undefined;
+								flush();
+							}, STREAM_FLUSH_MS);
+						}
 					}
+					return;
 				}
-				return;
+				flush();
+				if (mapped) this.onEvent(mapped);
+				if (ev.type === "message_end") this.currentSessionFile = session.sessionFile;
+			} catch (err) {
+				// A mapping/serialization failure must degrade to a visible error, not throw back into pi's
+				// event-dispatch loop (which would derail the rest of the turn).
+				this.onEvent({ type: "error", message: err instanceof Error ? err.message : String(err) });
 			}
-			flush();
-			if (mapped) this.onEvent(mapped);
-			if (ev.type === "message_end") this.currentSessionFile = session.sessionFile;
 		});
 	}
 
@@ -643,7 +649,9 @@ export class AgentManager {
 			cwd: this.cwd,
 			appDir: this.appDir,
 			model: this.currentModel,
-			thinkingLevel: this.thinkingLevel,
+			// Read the live session value so a setModel re-clamp (which can change the level) is reflected on
+			// the next refreshState, instead of returning a stale field.
+			thinkingLevel: (this.session?.thinkingLevel as ThinkingLevelDto) ?? this.thinkingLevel,
 			mode: this.mode,
 			showThinking: !this.settings.getHideThinkingBlock(),
 			hasModel: hasAnyModel(this.auth),

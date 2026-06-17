@@ -13,7 +13,7 @@ import type {
 	ThinkingLevelDto,
 	UsageDto,
 } from "@shared/ipc";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiKeyGate } from "@/components/ApiKeyGate";
 import { ApprovalDialog } from "@/components/ApprovalDialog";
 import { Composer } from "@/components/Composer";
@@ -306,11 +306,15 @@ export function App() {
 	}, [reset, refreshState, refreshSessions]);
 
 	const hasMessages = state.messages.length > 0;
+	// Stable context value: a new object each render would re-render every ViewContext consumer
+	// (ThinkingBlock, MessageList) on every streaming tick.
+	const viewValue = useMemo(
+		() => ({ showThinking, expandTools, setShowThinking: applyShowThinking, setExpandTools: applyExpandTools }),
+		[showThinking, expandTools, applyShowThinking, applyExpandTools],
+	);
 
 	return (
-		<ViewContext.Provider
-			value={{ showThinking, expandTools, setShowThinking: applyShowThinking, setExpandTools: applyExpandTools }}
-		>
+		<ViewContext.Provider value={viewValue}>
 			<div className="app">
 				<Titlebar
 					theme={theme}
