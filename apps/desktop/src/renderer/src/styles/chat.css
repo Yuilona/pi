@@ -502,3 +502,48 @@
 		opacity: 1;
 	}
 }
+
+/* ---- Markdown image gallery: uniform-height horizontal filmstrip (no cropping), click to enlarge ----
+   Consecutive markdown images are grouped into .md-gallery by rehypeGroupImages. In the narrow reading
+   column a single scrolling row reads cleaner than wrapped/justified rows. A lone image shows naturally. */
+.md-gallery {
+	display: flex;
+	gap: var(--sp-3);
+	overflow-x: auto;
+	margin: var(--sp-5) 0;
+	padding-bottom: var(--sp-2);
+	scroll-snap-type: x proximity;
+}
+.md-img {
+	flex: 0 0 auto;
+	display: block;
+	padding: 0;
+	border: none;
+	background: none;
+	cursor: zoom-in;
+	border-radius: var(--r-md);
+	scroll-snap-align: start;
+	transition: transform 0.16s var(--ease);
+}
+.md-img img {
+	display: block;
+	height: 240px;
+	width: auto;
+	border-radius: var(--r-md);
+	box-shadow: var(--shadow-ring);
+}
+/* A lone image is not a filmstrip — let it show at natural aspect, capped. */
+.md-gallery .md-img:only-child {
+	max-width: 100%;
+}
+.md-gallery .md-img:only-child img {
+	height: auto;
+	max-height: 420px;
+	max-width: 100%;
+}
+.md-img:hover {
+	transform: translateY(-1px);
+}
+.md-img:hover img {
+	box-shadow: var(--shadow-ring-deep), var(--shadow-whisper);
+}

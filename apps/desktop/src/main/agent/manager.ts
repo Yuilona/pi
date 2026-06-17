@@ -61,6 +61,13 @@ const TITLE_SYSTEM_PROMPT =
 	"Reply with ONLY the title: 3-6 words, no surrounding quotes, no trailing punctuation, " +
 	"in the same language as the user.";
 
+// Appended to pi's base system prompt so images the model shares actually render (and group into a gallery).
+const IMAGE_OUTPUT_INSTRUCTION =
+	"Showing images: when you want to show the user a picture, ALWAYS use Markdown image syntax so it renders " +
+	"inline — ![short alt](https://direct-image-url). Use a real, directly-loadable image URL (typically " +
+	"ending in .jpg/.png/.gif/.webp); never paste a bare URL or an <img> HTML tag. When showing several " +
+	"images, put each on its own line (or all on one line) so they group into a gallery.";
+
 export class AgentManager {
 	private auth: AuthBundle = createAuth();
 	private session: AgentSession | undefined;
@@ -150,6 +157,7 @@ export class AgentManager {
 			cwd: this.cwd,
 			agentDir: getAgentDir(),
 			extensionFactories: [createApprovalExtensionFactory(this.requestApproval)],
+			appendSystemPrompt: [IMAGE_OUTPUT_INSTRUCTION],
 		});
 		await resourceLoader.reload();
 
