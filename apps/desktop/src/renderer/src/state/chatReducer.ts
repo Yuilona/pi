@@ -104,11 +104,19 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 				retry: { attempt: action.attempt, maxAttempts: action.maxAttempts, delayMs: action.delayMs },
 			};
 		case "auto_retry_end":
-			return { ...state, retry: undefined };
+			return {
+				...state,
+				retry: undefined,
+				error: !action.success && action.finalError ? action.finalError : state.error,
+			};
 		case "compaction_start":
 			return { ...state, compacting: true };
 		case "compaction_end":
-			return { ...state, compacting: false };
+			return {
+				...state,
+				compacting: false,
+				error: action.errorMessage && !action.aborted ? action.errorMessage : state.error,
+			};
 		case "error":
 			return { ...state, error: action.message, streaming: false };
 		default:

@@ -1,6 +1,7 @@
 import type { IpcMessage } from "@shared/ipc";
 import { useEffect, useRef } from "react";
 import { AssistantBubble } from "@/components/AssistantBubble";
+import { StatusBanners } from "@/components/StatusBanners";
 import { UserBubble } from "@/components/UserBubble";
 import type { ChatState } from "@/state/chatReducer";
 import { useView } from "@/state/viewPrefs";
@@ -98,13 +99,7 @@ export function MessageList({ state }: { state: ChatState }) {
 				),
 			)}
 			{awaitingFirstToken && <Working />}
-			{state.error && <div className="banner banner-error selectable">{state.error}</div>}
-			{state.retry && (
-				<div className="banner banner-retry">
-					Retrying… attempt {state.retry.attempt}/{state.retry.maxAttempts}
-				</div>
-			)}
-			{state.compacting && <div className="banner banner-info">Compacting context…</div>}
+			<StatusBanners state={state} />
 			<div ref={endRef} />
 		</div>
 	);

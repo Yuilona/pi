@@ -81,6 +81,17 @@ function mapResultContent(content: unknown): IpcResultContent[] {
 	return out;
 }
 
+/**
+ * A failed assistant turn arrives as an assistant message with stopReason "error" and the real reason in
+ * errorMessage (pi sends the same object to message_start and message_end). Surface that text as an error
+ * event instead of letting it render as a blank bubble. "aborted" is a normal user cancel — not an error.
+ */
+function assistantErrorText(message: unknown): string | null {
+	const m = message as { role?: string; stopReason?: string; errorMessage?: string };
+	if (m.role === "assistant" && m.stopReason === "error" && m.errorMessage) return m.errorMessage;
+	return null;
+}
+
 /** Map a pi AgentSessionEvent to a serializable IpcAgentEvent. Returns null for events the UI ignores. */
 export function mapEvent(ev: AgentSessionEvent, id: MessageIdFn): IpcAgentEvent | null {
 	switch (ev.type) {
@@ -95,6 +106,9 @@ export function mapEvent(ev: AgentSessionEvent, id: MessageIdFn): IpcAgentEvent 
 		case "message_start": {
 			const role = (ev.message as { role: string }).role;
 			if (role === "toolResult") return null;
+			// A turn that failed before producing any content would otherwise open an empty bubble; the
+			// matching message_end raises the error banner instead.
+			if (assistantErrorText(ev.message)) return null;
 			return { type: "message_start", message: toIpcMessage(ev.message as never, id(role, "start")) };
 		}
 		case "message_update": {
@@ -104,6 +118,9 @@ export function mapEvent(ev: AgentSessionEvent, id: MessageIdFn): IpcAgentEvent 
 		case "message_end": {
 			const role = (ev.message as { role: string }).role;
 			if (role === "toolResult") return null;
+			// Surface a failed turn's real error text (otherwise it lands as an empty assistant message).
+			const errText = assistantErrorText(ev.message);
+			if (errText) return { type: "error", message: errText };
 			return { type: "message_end", message: toIpcMessage(ev.message as never, id(role, "end")) };
 		}
 		case "tool_execution_start":
@@ -132,11 +149,11 @@ export function mapEvent(ev: AgentSessionEvent, id: MessageIdFn): IpcAgentEvent 
 		case "auto_retry_start":
 			return { type: "auto_retry_start", attempt: ev.attempt, maxAttempts: ev.maxAttempts, delayMs: ev.delayMs };
 		case "auto_retry_end":
-			return { type: "auto_retry_end", success: ev.success };
+			return { type: "auto_retry_end", success: ev.success, finalError: ev.finalError };
 		case "compaction_start":
 			return { type: "compaction_start" };
 		case "compaction_end":
-			return { type: "compaction_end" };
+			return { type: "compaction_end", errorMessage: ev.errorMessage, aborted: ev.aborted };
 		default:
 			return null;
 	}

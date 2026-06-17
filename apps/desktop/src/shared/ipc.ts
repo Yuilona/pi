@@ -147,9 +147,9 @@ export type IpcAgentEvent =
 	| { type: "tool_execution_end"; toolResult: IpcToolResult }
 	| { type: "queue_update"; steering: string[]; followUp: string[] }
 	| { type: "auto_retry_start"; attempt: number; maxAttempts: number; delayMs: number }
-	| { type: "auto_retry_end"; success: boolean }
+	| { type: "auto_retry_end"; success: boolean; finalError?: string }
 	| { type: "compaction_start" }
-	| { type: "compaction_end" }
+	| { type: "compaction_end"; errorMessage?: string; aborted?: boolean }
 	/** A brand-new chat was auto-titled; carries the session path so the sidebar can reveal-animate that row. */
 	| { type: "session_renamed"; path: string; title: string }
 	| { type: "error"; message: string };

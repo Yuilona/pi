@@ -21,6 +21,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { MessageList } from "@/components/MessageList";
 import { SessionSidebar } from "@/components/SessionSidebar";
 import { SettingsPanel } from "@/components/SettingsPanel";
+import { StatusBanners } from "@/components/StatusBanners";
 import { Titlebar } from "@/components/Titlebar";
 import { useAgent } from "@/state/useAgent";
 import { ViewContext } from "@/state/viewPrefs";
@@ -352,6 +353,7 @@ export function App() {
 								) : (
 									<div className="content" style={{ minHeight: "100%" }}>
 										<EmptyState onPick={setInput} />
+										<StatusBanners state={state} />
 									</div>
 								)}
 							</div>

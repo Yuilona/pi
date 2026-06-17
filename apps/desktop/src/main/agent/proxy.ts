@@ -84,14 +84,28 @@ function installFetch(transport: (input: any, init: any) => Promise<any>): void 
 }
 
 export function applyProxy(cfg: ProxyConfig): void {
-	currentAgent?.close().catch(() => {});
-	currentAgent = undefined;
 	// Enabling without an explicit URL falls back to the env proxy (works only if the app process
 	// actually inherited HTTPS_PROXY — GUI launches usually don't, so the URL must be set in Settings).
 	const url = cfg.url || (cfg.enabled ? detectEnvProxy() : "");
+	let nextAgent: ProxyAgent | undefined;
 	if (cfg.enabled && url) {
-		const agent = new ProxyAgent(url);
-		currentAgent = agent;
+		try {
+			const { protocol } = new URL(url);
+			if (protocol !== "http:" && protocol !== "https:") throw new Error(`Unsupported proxy scheme: ${protocol}`);
+			// Construct the new agent BEFORE touching the live transport: a bad URL throws here, and we bail
+			// out leaving the previous (working) fetch in place — never half-swapped or unset (which would
+			// brick every model request until restart).
+			nextAgent = new ProxyAgent(url);
+		} catch (err) {
+			console.error("[proxy] invalid proxy URL, keeping the previous transport:", err);
+			return;
+		}
+	}
+	// Only now is the swap guaranteed safe: tear down the old agent and install a valid transport.
+	currentAgent?.close().catch(() => {});
+	currentAgent = nextAgent;
+	if (nextAgent) {
+		const agent = nextAgent;
 		installFetch((input, init) => undiciFetch(input, { ...init, dispatcher: agent }));
 	} else {
 		installFetch((input, init) => originalFetch(input, init));

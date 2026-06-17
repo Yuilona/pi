@@ -350,14 +350,35 @@ export class AgentManager {
 
 	/** Resume a saved session (adopts its cwd from the file header) and rebuild around its history. */
 	async switchSession(path: string): Promise<void> {
-		const sm = SessionManager.open(path);
+		let sm: SessionManager;
+		try {
+			sm = SessionManager.open(path);
+		} catch (err) {
+			// A missing/corrupt session file must not reject unhandled or tear down the live session.
+			this.onEvent({
+				type: "error",
+				message: `Couldn't open session: ${err instanceof Error ? err.message : String(err)}`,
+			});
+			return;
+		}
 		const cwd = sm.getCwd();
-		if (cwd) {
-			this.cwd = cwd;
-			this.settings = SettingsManager.create(cwd);
+		// Don't adopt a stale/deleted project dir; keep the current cwd if the saved one no longer exists.
+		const nextCwd = cwd && existsSync(cwd) ? cwd : this.cwd;
+		if (nextCwd !== this.cwd) {
+			this.cwd = nextCwd;
+			this.settings = SettingsManager.create(nextCwd);
 		}
 		this.teardown();
-		await this.buildSession(sm);
+		try {
+			await this.buildSession(sm);
+		} catch (err) {
+			this.onEvent({
+				type: "error",
+				message: `Couldn't resume session: ${err instanceof Error ? err.message : String(err)}`,
+			});
+			// Rebuild a usable session so the app isn't left with none after a failed resume.
+			if (hasAnyModel(this.auth)) await this.ensureSession();
+		}
 	}
 
 	async deleteSession(path: string): Promise<void> {
