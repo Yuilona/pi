@@ -59,6 +59,7 @@ export function App() {
 	const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
 	const [sidebarOpen, setSidebarOpen] = useState(true);
 	const [sessions, setSessions] = useState<SessionInfoDto[]>([]);
+	const [retitledPath, setRetitledPath] = useState<string | undefined>();
 	const [currentCwd, setCurrentCwd] = useState("");
 	const [appDir, setAppDir] = useState("");
 	const [sessionFile, setSessionFile] = useState<string | undefined>();
@@ -247,6 +248,17 @@ export function App() {
 		if (ready === true && sidebarOpen) void refreshSessions();
 	}, [ready, sidebarOpen, state.streaming, refreshSessions]);
 
+	// Auto-title: when the agent names a brand-new chat, refresh the list and flag that row so it plays the
+	// reveal sweep. Separate onEvent subscription; the chat reducer ignores this event type.
+	useEffect(() => {
+		return window.pi.onEvent((e) => {
+			if (e.type !== "session_renamed") return;
+			void refreshSessions();
+			setRetitledPath(e.path);
+			setTimeout(() => setRetitledPath((p) => (p === e.path ? undefined : p)), 1300);
+		});
+	}, [refreshSessions]);
+
 	// Slash commands (prompt templates + skills) are project-scoped, so refresh them when the cwd changes.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: currentCwd intentionally re-triggers the refresh
 	useEffect(() => {
@@ -310,6 +322,7 @@ export function App() {
 					<SessionSidebar
 						sessions={sessions}
 						activePath={sessionFile}
+						retitledPath={retitledPath}
 						currentCwd={currentCwd}
 						onSelect={(p) => void openSession(p)}
 						onNew={() => void newChat()}

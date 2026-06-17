@@ -27,6 +27,8 @@ interface SessionGroup {
 interface SessionSidebarProps {
 	sessions: SessionInfoDto[];
 	activePath?: string;
+	/** Path of a session that was just auto-titled; that row plays a one-time reveal sweep. */
+	retitledPath?: string;
 	currentCwd: string;
 	onSelect: (path: string) => void;
 	onNew: () => void;
@@ -37,6 +39,7 @@ interface SessionSidebarProps {
 export function SessionSidebar({
 	sessions,
 	activePath,
+	retitledPath,
 	currentCwd,
 	onSelect,
 	onNew,
@@ -90,6 +93,7 @@ export function SessionSidebar({
 						group={g}
 						isCurrent={g.cwd === currentCwd}
 						activePath={activePath}
+						retitledPath={retitledPath}
 						onSelect={onSelect}
 						onNewInProject={onNewInProject}
 						onRequestDelete={setPendingDelete}
@@ -117,12 +121,21 @@ interface ProjectGroupProps {
 	group: SessionGroup;
 	isCurrent: boolean;
 	activePath?: string;
+	retitledPath?: string;
 	onSelect: (path: string) => void;
 	onNewInProject: (cwd: string) => void;
 	onRequestDelete: (s: SessionInfoDto) => void;
 }
 
-function ProjectGroup({ group, isCurrent, activePath, onSelect, onNewInProject, onRequestDelete }: ProjectGroupProps) {
+function ProjectGroup({
+	group,
+	isCurrent,
+	activePath,
+	retitledPath,
+	onSelect,
+	onNewInProject,
+	onRequestDelete,
+}: ProjectGroupProps) {
 	const [expanded, setExpanded] = useState(false);
 	const overflow = group.sessions.length - PINNED;
 	const visible = expanded ? group.sessions : group.sessions.slice(0, PINNED);
@@ -145,7 +158,10 @@ function ProjectGroup({ group, isCurrent, activePath, onSelect, onNewInProject, 
 			</header>
 
 			{visible.map((s) => (
-				<div key={s.path} className={`sess-wrap ${s.path === activePath ? "active" : ""}`}>
+				<div
+					key={s.path}
+					className={`sess-wrap ${s.path === activePath ? "active" : ""} ${s.path === retitledPath ? "retitled" : ""}`}
+				>
 					<button type="button" className="sess" onClick={() => onSelect(s.path)}>
 						<div className="sess-title">{s.title}</div>
 						<div className="sess-meta">

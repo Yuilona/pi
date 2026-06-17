@@ -92,6 +92,41 @@
 	opacity: 1;
 }
 
+/* Auto-title reveal: a soft light sweep crosses the row once, then the new title settles in. */
+@media (prefers-reduced-motion: no-preference) {
+	.sess-wrap.retitled::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		pointer-events: none;
+		background: linear-gradient(
+			105deg,
+			transparent 38%,
+			color-mix(in srgb, var(--brand) 26%, transparent) 50%,
+			transparent 62%
+		);
+		transform: translateX(-100%);
+		animation: sess-sweep 2.5s var(--ease) both;
+	}
+	.sess-wrap.retitled .sess-title {
+		animation: sess-title-in 0.5s var(--ease) 0.12s both;
+	}
+}
+@keyframes sess-sweep {
+	to {
+		transform: translateX(100%);
+	}
+}
+@keyframes sess-title-in {
+	from {
+		opacity: 0.3;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
 .sess-group {
 	margin-top: var(--sp-8);
 	/* small gap between rows so a hovered neighbor never visually fuses with the selected row */

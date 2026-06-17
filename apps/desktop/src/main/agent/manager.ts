@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { type AssistantMessage, complete } from "@earendil-works/pi-ai";
 import {
 	type AgentSession,
 	createAgentSession,
@@ -45,6 +46,49 @@ function projectName(cwd: string): string {
 	if (!cwd) return "—";
 	const segs = cwd.split(/[\\/]/).filter(Boolean);
 	return segs[segs.length - 1] || cwd;
+}
+
+const TITLE_SYSTEM_PROMPT =
+	"You generate a short, specific title for a chat from the user's first message. " +
+	"Reply with ONLY the title: 3-6 words, no surrounding quotes, no trailing punctuation, " +
+	"in the same language as the user.";
+
+/** First user message's text (handles both string and content-block forms; typed structurally so the
+ *  session's broader AgentMessage[] is accepted). */
+function firstUserText(messages: readonly unknown[]): string | undefined {
+	for (const raw of messages) {
+		const m = raw as { role?: string; content?: unknown };
+		if (m.role !== "user") continue;
+		if (typeof m.content === "string") return m.content.trim() || undefined;
+		if (!Array.isArray(m.content)) return undefined;
+		const text = m.content
+			.filter((b) => (b as { type?: string }).type === "text")
+			.map((b) => (b as { text?: string }).text ?? "")
+			.join(" ")
+			.trim();
+		return text || undefined;
+	}
+	return undefined;
+}
+
+/** Concatenated text of an assistant reply. */
+function assistantText(msg: AssistantMessage): string {
+	return msg.content
+		.filter((b) => b.type === "text")
+		.map((b) => (b as { text: string }).text)
+		.join(" ")
+		.trim();
+}
+
+/** Normalize a model-generated title: single line, no wrapping quotes / trailing punctuation, capped. */
+function cleanTitle(raw: string): string {
+	return raw
+		.replace(/\s+/g, " ")
+		.trim()
+		.replace(/^["'“”‘’`]+|["'“”‘’`]+$/g, "")
+		.replace(/[.。!！?？,，;；:：]+$/g, "")
+		.trim()
+		.slice(0, 60);
 }
 
 export class AgentManager {
@@ -176,12 +220,55 @@ export class AgentManager {
 	async prompt(text: string, images?: ImageAttachmentDto[]): Promise<void> {
 		try {
 			await this.ensureSession();
+			const session = this.session;
+			// A brand-new chat (no name yet, no messages yet) gets an auto-generated title after its first turn.
+			const titleAfter = !!session && !session.sessionName && (session.messages?.length ?? 0) === 0;
 			const imgs = images?.length
 				? images.map((i) => ({ type: "image" as const, data: i.data, mimeType: i.mimeType }))
 				: undefined;
-			await this.session?.prompt(text, imgs ? { images: imgs } : undefined);
+			await session?.prompt(text, imgs ? { images: imgs } : undefined);
+			if (titleAfter && session) void this.maybeTitleSession(session);
 		} catch (err) {
 			this.onEvent({ type: "error", message: err instanceof Error ? err.message : String(err) });
+		}
+	}
+
+	/**
+	 * Auto-title a brand-new chat after its first turn. This is a SEPARATE one-shot `complete()` call —
+	 * the conversation's own context is never touched (the chat AI stays focused on the chat), thinking is
+	 * disabled via a reasoning:false model copy, and it runs at most once per session (guarded by the
+	 * existing session name). On success the name is persisted and a `session_renamed` event lets the
+	 * sidebar reveal-animate that row. Failures fall back silently to the first-message title.
+	 */
+	private async maybeTitleSession(target: AgentSession): Promise<void> {
+		if (target.sessionName) return;
+		const model = target.model;
+		if (!model) return;
+		const first = firstUserText(target.messages);
+		if (!first) return;
+		try {
+			// Resolve key + headers the same way the session does — this covers custom providers whose
+			// key lives in models.json (authStorage.getApiKey alone returns undefined for those).
+			const auth = await this.auth.modelRegistry.getApiKeyAndHeaders(model);
+			if (!auth.ok || !auth.apiKey) return;
+			const reply = await complete(
+				{ ...model, reasoning: false },
+				{
+					systemPrompt: TITLE_SYSTEM_PROMPT,
+					messages: [{ role: "user", content: first.slice(0, 1500), timestamp: Date.now() }],
+				},
+				// Budget headroom: reasoning models (e.g. deepseek) think briefly before the title; too small a
+				// cap and all tokens go to reasoning, leaving the text (the title) empty. We read only text blocks.
+				{ apiKey: auth.apiKey, headers: auth.headers, maxTokens: 512, temperature: 0.3 },
+			);
+			const title = cleanTitle(assistantText(reply));
+			// Apply only if the user hasn't moved on to / renamed another session in the meantime.
+			if (title && this.session === target && !target.sessionName) {
+				target.setSessionName(title);
+				this.onEvent({ type: "session_renamed", path: target.sessionFile ?? "", title });
+			}
+		} catch {
+			// Silent: keep the first-message fallback title.
 		}
 	}
 
@@ -235,7 +322,7 @@ export class AgentManager {
 
 	async listSessions(): Promise<SessionInfoDto[]> {
 		const sessions = await SessionManager.listAll();
-		return sessions
+		const out = sessions
 			.filter((s) => s.messageCount > 0)
 			.map((s) => ({
 				path: s.path,
@@ -244,8 +331,27 @@ export class AgentManager {
 				modified: s.modified.getTime(),
 				cwd: s.cwd,
 				project: projectName(s.cwd),
-			}))
-			.sort((a, b) => b.modified - a.modified);
+			}));
+
+		// pi persists the session file only on the first message_end, so a chat whose first message was just
+		// sent isn't on disk yet. Surface the active in-memory session right away so its sidebar row appears
+		// the moment you hit send; it's superseded by the real on-disk entry (same path) once it persists.
+		const session = this.session;
+		const messages = session?.messages ?? [];
+		const file = session?.sessionFile;
+		const onDisk = !!file && out.some((s) => s.path === file);
+		if (session && !onDisk && messages.some((m) => (m as { role?: string }).role === "user")) {
+			out.push({
+				path: file ?? "__active__",
+				title: (session.sessionName || firstUserText(messages) || "New chat").trim().slice(0, 80) || "New chat",
+				messageCount: messages.length,
+				modified: Date.now(),
+				cwd: this.cwd,
+				project: projectName(this.cwd),
+			});
+		}
+
+		return out.sort((a, b) => b.modified - a.modified);
 	}
 
 	/** Snapshot of the active session's transcript, used to hydrate the UI when resuming. */

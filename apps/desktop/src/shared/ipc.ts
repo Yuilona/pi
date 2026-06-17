@@ -150,6 +150,8 @@ export type IpcAgentEvent =
 	| { type: "auto_retry_end"; success: boolean }
 	| { type: "compaction_start" }
 	| { type: "compaction_end" }
+	/** A brand-new chat was auto-titled; carries the session path so the sidebar can reveal-animate that row. */
+	| { type: "session_renamed"; path: string; title: string }
 	| { type: "error"; message: string };
 
 export interface ApprovalRequest {
