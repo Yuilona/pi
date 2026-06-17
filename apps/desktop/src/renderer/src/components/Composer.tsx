@@ -196,6 +196,24 @@ export function Composer({
 	return (
 		<div className="composer-wrap">
 			<div className="content">
+				{hasAttachments && (
+					<div className="attach-row">
+						{(attachments ?? []).map((a, i) => (
+							<div className="attach" key={a.data.slice(0, 32)}>
+								<img src={`data:${a.mimeType};base64,${a.data}`} alt="attachment" />
+								<button
+									type="button"
+									className="attach-x"
+									onClick={() => onRemoveImage?.(i)}
+									title="Remove"
+									aria-label="Remove image"
+								>
+									<IconX />
+								</button>
+							</div>
+						))}
+					</div>
+				)}
 				<div className="composer-bar">
 					{mode && (
 						<button
@@ -292,25 +310,6 @@ export function Composer({
 									<span className="cmd-desc">{cmd.description}</span>
 									<span className={`cmd-kind cmd-kind-${cmd.kind}`}>{KIND_LABEL[cmd.kind]}</span>
 								</button>
-							))}
-						</div>
-					)}
-
-					{hasAttachments && (
-						<div className="attach-row">
-							{(attachments ?? []).map((a, i) => (
-								<div className="attach" key={a.data.slice(0, 32)}>
-									<img src={`data:${a.mimeType};base64,${a.data}`} alt="attachment" />
-									<button
-										type="button"
-										className="attach-x"
-										onClick={() => onRemoveImage?.(i)}
-										title="Remove"
-										aria-label="Remove image"
-									>
-										<IconX />
-									</button>
-								</div>
 							))}
 						</div>
 					)}

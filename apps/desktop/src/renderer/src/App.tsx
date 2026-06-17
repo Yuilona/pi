@@ -18,11 +18,13 @@ import { ApiKeyGate } from "@/components/ApiKeyGate";
 import { ApprovalDialog } from "@/components/ApprovalDialog";
 import { Composer } from "@/components/Composer";
 import { EmptyState } from "@/components/EmptyState";
+import { ImageViewer } from "@/components/ImageViewer";
 import { MessageList } from "@/components/MessageList";
 import { SessionSidebar } from "@/components/SessionSidebar";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { StatusBanners } from "@/components/StatusBanners";
 import { Titlebar } from "@/components/Titlebar";
+import { ImageViewerContext } from "@/state/imageViewer";
 import { useAgent } from "@/state/useAgent";
 import { ViewContext } from "@/state/viewPrefs";
 
@@ -70,6 +72,7 @@ export function App() {
 	const [attachments, setAttachments] = useState<ImageAttachmentDto[]>([]);
 	const [usage, setUsage] = useState<UsageDto | undefined>();
 	const [models, setModels] = useState<ModelInfoDto[]>([]);
+	const [viewerSrc, setViewerSrc] = useState<string | null>(null);
 
 	useEffect(() => {
 		document.documentElement.dataset.theme = theme;
@@ -315,93 +318,96 @@ export function App() {
 
 	return (
 		<ViewContext.Provider value={viewValue}>
-			<div className="app">
-				<Titlebar
-					theme={theme}
-					cwdLabel={cwdLabel}
-					onToggleTheme={toggleTheme}
-					onChooseCwd={chooseCwd}
-					onNewChat={() => void newChat()}
-					onToggleSidebar={() => setSidebarOpen((o) => !o)}
-					onOpenSettings={() => setSettingsOpen(true)}
-				/>
-				{ready === true && sidebarOpen && (
-					<SessionSidebar
-						sessions={sessions}
-						activePath={sessionFile}
-						retitledPath={retitledPath}
-						currentCwd={currentCwd}
-						onSelect={(p) => void openSession(p)}
-						onNew={() => void newChat()}
-						onNewInProject={(p) => void newChatInCwd(p)}
-						onDelete={(p) => void deleteSession(p)}
-					/>
-				)}
-				<main className="main">
-					{ready === false ? (
-						<div className="scroll">
-							<div className="content" style={{ minHeight: "100%" }}>
-								<ApiKeyGate
-									onReady={() => {
-										setReady(true);
-										void refreshState();
-									}}
-								/>
-							</div>
-						</div>
-					) : ready === true ? (
-						<>
-							<div className="scroll">
-								{hasMessages ? (
-									<MessageList state={state} />
-								) : (
-									<div className="content" style={{ minHeight: "100%" }}>
-										<EmptyState onPick={setInput} />
-										<StatusBanners state={state} />
-									</div>
-								)}
-							</div>
-							<Composer
-								value={input}
-								onChange={setInput}
-								onSubmit={handleSend}
-								streaming={state.streaming}
-								onStop={abort}
-								mode={mode}
-								onCycleMode={cycleMode}
-								commands={commands}
-								onRunCommand={runCommand}
-								attachments={attachments}
-								onAddImages={(imgs) => setAttachments((a) => [...a, ...imgs])}
-								onRemoveImage={(i) => setAttachments((a) => a.filter((_, idx) => idx !== i))}
-								models={models}
-								model={model}
-								onPickModel={(p, id) => void pickModel(p, id)}
-								usage={usage}
-							/>
-						</>
-					) : (
-						<div className="scroll" />
-					)}
-				</main>
-
-				{settingsOpen && (
-					<SettingsPanel
-						onClose={() => setSettingsOpen(false)}
+			<ImageViewerContext.Provider value={setViewerSrc}>
+				<div className="app">
+					<Titlebar
 						theme={theme}
-						onToggleTheme={toggleTheme}
 						cwdLabel={cwdLabel}
+						onToggleTheme={toggleTheme}
 						onChooseCwd={chooseCwd}
-						thinkingLevel={thinking}
-						mode={mode}
-						onSetMode={applyMode}
-						currentModel={model ? { provider: model.provider, id: model.id } : undefined}
-						onChanged={refreshState}
+						onNewChat={() => void newChat()}
+						onToggleSidebar={() => setSidebarOpen((o) => !o)}
+						onOpenSettings={() => setSettingsOpen(true)}
 					/>
-				)}
+					{ready === true && sidebarOpen && (
+						<SessionSidebar
+							sessions={sessions}
+							activePath={sessionFile}
+							retitledPath={retitledPath}
+							currentCwd={currentCwd}
+							onSelect={(p) => void openSession(p)}
+							onNew={() => void newChat()}
+							onNewInProject={(p) => void newChatInCwd(p)}
+							onDelete={(p) => void deleteSession(p)}
+						/>
+					)}
+					<main className="main">
+						{ready === false ? (
+							<div className="scroll">
+								<div className="content" style={{ minHeight: "100%" }}>
+									<ApiKeyGate
+										onReady={() => {
+											setReady(true);
+											void refreshState();
+										}}
+									/>
+								</div>
+							</div>
+						) : ready === true ? (
+							<>
+								<div className="scroll">
+									{hasMessages ? (
+										<MessageList state={state} />
+									) : (
+										<div className="content" style={{ minHeight: "100%" }}>
+											<EmptyState onPick={setInput} />
+											<StatusBanners state={state} />
+										</div>
+									)}
+								</div>
+								<Composer
+									value={input}
+									onChange={setInput}
+									onSubmit={handleSend}
+									streaming={state.streaming}
+									onStop={abort}
+									mode={mode}
+									onCycleMode={cycleMode}
+									commands={commands}
+									onRunCommand={runCommand}
+									attachments={attachments}
+									onAddImages={(imgs) => setAttachments((a) => [...a, ...imgs])}
+									onRemoveImage={(i) => setAttachments((a) => a.filter((_, idx) => idx !== i))}
+									models={models}
+									model={model}
+									onPickModel={(p, id) => void pickModel(p, id)}
+									usage={usage}
+								/>
+							</>
+						) : (
+							<div className="scroll" />
+						)}
+					</main>
 
-				{approvals[0] && <ApprovalDialog request={approvals[0]} onResolve={resolveApproval} />}
-			</div>
+					{settingsOpen && (
+						<SettingsPanel
+							onClose={() => setSettingsOpen(false)}
+							theme={theme}
+							onToggleTheme={toggleTheme}
+							cwdLabel={cwdLabel}
+							onChooseCwd={chooseCwd}
+							thinkingLevel={thinking}
+							mode={mode}
+							onSetMode={applyMode}
+							currentModel={model ? { provider: model.provider, id: model.id } : undefined}
+							onChanged={refreshState}
+						/>
+					)}
+
+					{approvals[0] && <ApprovalDialog request={approvals[0]} onResolve={resolveApproval} />}
+					<ImageViewer src={viewerSrc} onClose={() => setViewerSrc(null)} />
+				</div>
+			</ImageViewerContext.Provider>
 		</ViewContext.Provider>
 	);
 }

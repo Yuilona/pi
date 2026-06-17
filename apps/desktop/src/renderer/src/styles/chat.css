@@ -32,6 +32,23 @@
 	max-height: 240px;
 	border-radius: var(--r-lg);
 	box-shadow: var(--shadow-ring);
+	display: block;
+}
+/* Clickable thumbnail → opens the lightbox. Transparent button wrapper so the image keeps its own shape. */
+.bubble-img {
+	display: block;
+	padding: 0;
+	border: none;
+	background: none;
+	border-radius: var(--r-lg);
+	cursor: zoom-in;
+	transition: transform 0.18s var(--ease);
+}
+.bubble-img:hover {
+	transform: translateY(-1px);
+}
+.bubble-img:hover img {
+	box-shadow: var(--shadow-ring-deep), var(--shadow-whisper);
 }
 
 /* ---- User bubble: warm sand, compact, right-aligned ---- */
@@ -228,6 +245,14 @@
 	padding: var(--sp-4) var(--sp-6);
 	text-align: left;
 	color: var(--text-2);
+	cursor: pointer;
+	transition: background 0.14s var(--ease);
+}
+.tool-head:hover {
+	background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+.tool-head:active {
+	background: color-mix(in srgb, var(--text) 7%, transparent);
 }
 .tool-ic {
 	color: var(--brand);
@@ -288,6 +313,25 @@
 	overflow: auto;
 	white-space: pre-wrap;
 	word-break: break-word;
+}
+
+/* Smooth reveal when a tool card / bash output / diff expands. Runs once on mount (not per streaming token,
+   since the body element stays mounted while text grows); collapse is instant. Honors the global
+   prefers-reduced-motion reset in base.css. */
+.tool-body,
+.bash-out,
+.diff {
+	animation: tool-reveal 0.2s var(--ease) both;
+}
+@keyframes tool-reveal {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 .dotpulse {
@@ -427,4 +471,34 @@
 }
 .gate-link:hover {
 	color: var(--brand);
+}
+
+/* ---- Image lightbox (click a sent image to enlarge; click anywhere / Esc to close) ---- */
+.lightbox {
+	position: fixed;
+	inset: 0;
+	z-index: 100;
+	display: grid;
+	place-items: center;
+	padding: var(--sp-20);
+	border: none;
+	cursor: zoom-out;
+	background: rgba(20, 20, 19, 0.72);
+	animation: lightbox-in 0.16s var(--ease);
+}
+.lightbox img {
+	max-width: 100%;
+	max-height: 100%;
+	border-radius: var(--r-lg);
+	box-shadow:
+		var(--shadow-ring),
+		rgba(0, 0, 0, 0.4) 0 24px 64px;
+}
+@keyframes lightbox-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }

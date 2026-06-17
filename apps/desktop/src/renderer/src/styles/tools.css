@@ -51,6 +51,14 @@
 	border: none;
 	padding: var(--sp-4) var(--sp-6);
 	text-align: left;
+	cursor: pointer;
+	transition: background 0.14s var(--ease);
+}
+.bash-head:hover {
+	background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+.bash-head:active {
+	background: color-mix(in srgb, var(--text) 7%, transparent);
 }
 .bash-prompt {
 	color: var(--brand);
