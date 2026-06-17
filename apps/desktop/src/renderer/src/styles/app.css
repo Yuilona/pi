@@ -182,6 +182,9 @@
 	flex: 0 0 auto;
 	width: 20px;
 	height: 20px;
+	/* Reset the UA button padding (1px 6px): with border-box + width 20px it shrinks the grid content
+	   box to 8px, narrower than the 14px icon, so overflow-alignment pins the glyph right (off-center). */
+	padding: 0;
 	display: grid;
 	place-items: center;
 	border: none;
