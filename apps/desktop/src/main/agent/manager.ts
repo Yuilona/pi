@@ -115,6 +115,10 @@ export class AgentManager {
 	// flushes the tail, teardown() drops it (a session switch reloads the transcript anyway).
 	private updateTimer: ReturnType<typeof setTimeout> | undefined;
 	private flushPendingUpdate: (() => void) | undefined;
+	// Serializes session-lifecycle mutations (build / teardown / switch / set-cwd / set-key) so concurrent
+	// ones can't interleave on the shared session state — rapid session clicks or a send racing a switch
+	// must not leak a subscription or paint into the wrong session. The turn itself runs OUTSIDE the lock.
+	private opChain: Promise<unknown> = Promise.resolve();
 
 	constructor(
 		private readonly onEvent: (e: IpcAgentEvent) => void,
@@ -159,6 +163,17 @@ export class AgentManager {
 
 	setMode(mode: PermissionMode): void {
 		this.mode = mode;
+	}
+
+	/** Run a session-lifecycle mutation under the serialization lock (see opChain). Errors propagate to the
+	 * caller but never wedge the chain (the chain itself swallows them so the next op still runs). */
+	private runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+		const next = this.opChain.then(fn, fn);
+		this.opChain = next.then(
+			() => {},
+			() => {},
+		);
+		return next;
 	}
 
 	/**
@@ -246,6 +261,9 @@ export class AgentManager {
 		this.unsubscribe = undefined;
 		this.session?.dispose();
 		this.session = undefined;
+		// Clear the tracker too, so a concurrent rebuild's await-gap can't leave deleteSession matching a
+		// stale path (it's re-established at the end of buildSession).
+		this.currentSessionFile = undefined;
 	}
 
 	private async ensureSession(): Promise<void> {
@@ -257,25 +275,40 @@ export class AgentManager {
 	/** Warm up on startup so the resolved default model is known immediately (no-op if no model). */
 	async init(): Promise<void> {
 		try {
-			if (hasAnyModel(this.auth)) await this.ensureSession();
+			if (hasAnyModel(this.auth)) await this.runExclusive(() => this.ensureSession());
 		} catch (err) {
 			this.onEvent({ type: "error", message: err instanceof Error ? err.message : String(err) });
 		}
 	}
 
 	async prompt(text: string, images?: ImageAttachmentDto[]): Promise<void> {
+		// Ensure/build the session UNDER the lock so it can't interleave with a concurrent switch/new-session;
+		// the turn itself runs OUTSIDE the lock so a long stream never blocks switching sessions.
+		let session: AgentSession | undefined;
 		try {
-			await this.ensureSession();
-			const session = this.session;
-			// A brand-new chat (no name yet, no messages yet) gets an auto-generated title after its first turn.
-			const titleAfter = !!session && !session.sessionName && (session.messages?.length ?? 0) === 0;
-			const imgs = images?.length
-				? images.map((i) => ({ type: "image" as const, data: i.data, mimeType: i.mimeType }))
-				: undefined;
-			await session?.prompt(text, imgs ? { images: imgs } : undefined);
-			if (titleAfter && session) void this.maybeTitleSession(session);
+			session = await this.runExclusive(async () => {
+				await this.ensureSession();
+				return this.session;
+			});
 		} catch (err) {
 			this.onEvent({ type: "error", message: err instanceof Error ? err.message : String(err) });
+			return;
+		}
+		if (!session) return;
+		// A brand-new chat (no name yet, no messages yet) gets an auto-generated title after its first turn.
+		const titleAfter = !session.sessionName && (session.messages?.length ?? 0) === 0;
+		const imgs = images?.length
+			? images.map((i) => ({ type: "image" as const, data: i.data, mimeType: i.mimeType }))
+			: undefined;
+		try {
+			await session.prompt(text, imgs ? { images: imgs } : undefined);
+			if (titleAfter) void this.maybeTitleSession(session);
+		} catch (err) {
+			// If we've torn down / switched away from this session mid-turn (an intentional switch disposes
+			// it), the rejection is expected — only surface a real failure of the still-current session.
+			if (this.session === session) {
+				this.onEvent({ type: "error", message: err instanceof Error ? err.message : String(err) });
+			}
 		}
 	}
 
@@ -344,12 +377,18 @@ export class AgentManager {
 	}
 
 	async newSession(): Promise<void> {
+		return this.runExclusive(() => this.newSessionImpl());
+	}
+	private async newSessionImpl(): Promise<void> {
 		this.teardown();
 		if (hasAnyModel(this.auth)) await this.ensureSession();
 	}
 
 	/** Resume a saved session (adopts its cwd from the file header) and rebuild around its history. */
 	async switchSession(path: string): Promise<void> {
+		return this.runExclusive(() => this.switchSessionImpl(path));
+	}
+	private async switchSessionImpl(path: string): Promise<void> {
 		let sm: SessionManager;
 		try {
 			sm = SessionManager.open(path);
@@ -382,12 +421,16 @@ export class AgentManager {
 	}
 
 	async deleteSession(path: string): Promise<void> {
+		return this.runExclusive(() => this.deleteSessionImpl(path));
+	}
+	private async deleteSessionImpl(path: string): Promise<void> {
 		try {
 			rmSync(path, { force: true });
 		} catch (err) {
 			this.onEvent({ type: "error", message: err instanceof Error ? err.message : String(err) });
 		}
-		if (this.currentSessionFile === path) await this.newSession();
+		// Call the unlocked impl: we already hold the lock, so this.newSession() would deadlock on the chain.
+		if (this.currentSessionFile === path) await this.newSessionImpl();
 	}
 
 	async listSessions(): Promise<SessionInfoDto[]> {
@@ -466,6 +509,9 @@ export class AgentManager {
 
 	/** Add/update a provider API key, refresh model availability, and rebuild the session. */
 	async setApiKey(provider: string, key: string): Promise<boolean> {
+		return this.runExclusive(() => this.setApiKeyImpl(provider, key));
+	}
+	private async setApiKeyImpl(provider: string, key: string): Promise<boolean> {
 		persistApiKey(this.auth, provider, key.trim());
 		this.auth.modelRegistry.refresh();
 		this.teardown();
@@ -528,6 +574,9 @@ export class AgentManager {
 
 	/** Add a custom OpenAI-compatible endpoint by writing ~/.pi/agent/models.json, then refresh. */
 	async addCustomProvider(cfg: CustomProviderInput): Promise<boolean> {
+		return this.runExclusive(() => this.addCustomProviderImpl(cfg));
+	}
+	private async addCustomProviderImpl(cfg: CustomProviderInput): Promise<boolean> {
 		try {
 			const current = this.readModelsJson();
 			const providers = (current.providers ?? {}) as Record<string, unknown>;
@@ -559,6 +608,9 @@ export class AgentManager {
 	}
 
 	async setModel(provider: string, id: string): Promise<void> {
+		return this.runExclusive(() => this.setModelImpl(provider, id));
+	}
+	private async setModelImpl(provider: string, id: string): Promise<void> {
 		const model = this.auth.modelRegistry.find(provider, id);
 		if (!model) return;
 		this.currentModel = { provider: model.provider, id: model.id, label: model.name, available: true };
@@ -572,6 +624,9 @@ export class AgentManager {
 	}
 
 	async setCwd(cwd: string): Promise<void> {
+		return this.runExclusive(() => this.setCwdImpl(cwd));
+	}
+	private async setCwdImpl(cwd: string): Promise<void> {
 		this.cwd = cwd;
 		this.settings = SettingsManager.create(cwd);
 		this.teardown();
