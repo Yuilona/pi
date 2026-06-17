@@ -1,5 +1,6 @@
 import type { SessionInfoDto } from "@shared/ipc";
 import { useMemo, useRef, useState } from "react";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { IconFolder, IconPlus, IconTrash } from "@/components/icons";
 
 /** How many of a project's most-recent chats stay pinned; the rest fold under "show more". */
@@ -69,6 +70,9 @@ export function SessionSidebar({
 		return order.map((cwd) => map.get(cwd)).filter((g): g is SessionGroup => g !== undefined);
 	}, [sessions]);
 
+	// Delete is gated by a confirm dialog so a misclick on the trash icon can't silently drop a chat.
+	const [pendingDelete, setPendingDelete] = useState<SessionInfoDto | null>(null);
+
 	return (
 		<aside className="sidebar">
 			<div className="sidebar-head">
@@ -88,10 +92,23 @@ export function SessionSidebar({
 						activePath={activePath}
 						onSelect={onSelect}
 						onNewInProject={onNewInProject}
-						onDelete={onDelete}
+						onRequestDelete={setPendingDelete}
 					/>
 				))}
 			</div>
+			{pendingDelete && (
+				<ConfirmDialog
+					title="Delete this chat?"
+					message={pendingDelete.title}
+					confirmLabel="Delete"
+					danger
+					onConfirm={() => {
+						onDelete(pendingDelete.path);
+						setPendingDelete(null);
+					}}
+					onCancel={() => setPendingDelete(null)}
+				/>
+			)}
 		</aside>
 	);
 }
@@ -102,10 +119,10 @@ interface ProjectGroupProps {
 	activePath?: string;
 	onSelect: (path: string) => void;
 	onNewInProject: (cwd: string) => void;
-	onDelete: (path: string) => void;
+	onRequestDelete: (s: SessionInfoDto) => void;
 }
 
-function ProjectGroup({ group, isCurrent, activePath, onSelect, onNewInProject, onDelete }: ProjectGroupProps) {
+function ProjectGroup({ group, isCurrent, activePath, onSelect, onNewInProject, onRequestDelete }: ProjectGroupProps) {
 	const [expanded, setExpanded] = useState(false);
 	const overflow = group.sessions.length - PINNED;
 	const visible = expanded ? group.sessions : group.sessions.slice(0, PINNED);
@@ -138,7 +155,7 @@ function ProjectGroup({ group, isCurrent, activePath, onSelect, onNewInProject, 
 					<button
 						type="button"
 						className="icon-btn danger sess-del"
-						onClick={() => onDelete(s.path)}
+						onClick={() => onRequestDelete(s)}
 						title="Delete chat"
 					>
 						<IconTrash />

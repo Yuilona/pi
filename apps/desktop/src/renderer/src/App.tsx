@@ -222,6 +222,21 @@ export function App() {
 		});
 	}, []);
 
+	// Cycle the permission mode with Shift+Tab from anywhere in the chat view — not only when the composer
+	// textarea is focused (clicking the model pill / sidebar / "+" moves focus off it). Skipped while
+	// Settings is open so its form fields keep normal Tab navigation, and when the composer textarea is
+	// focused (it handles Shift+Tab itself) to avoid cycling twice.
+	useEffect(() => {
+		const onKey = (e: globalThis.KeyboardEvent) => {
+			if (e.key !== "Tab" || !e.shiftKey || settingsOpen) return;
+			if ((e.target as HTMLElement | null)?.tagName === "TEXTAREA") return;
+			e.preventDefault();
+			cycleMode();
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [settingsOpen, cycleMode]);
+
 	useEffect(() => {
 		void refreshState();
 	}, [refreshState]);

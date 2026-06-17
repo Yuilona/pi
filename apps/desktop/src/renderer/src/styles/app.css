@@ -64,7 +64,9 @@
 	text-align: left;
 	background: transparent;
 	border: none;
-	padding: var(--sp-5) var(--sp-6);
+	/* reserve room on the right so the title/meta ellipsis-truncate before the (30px) delete button
+	   and never sit under it on hover */
+	padding: var(--sp-5) calc(var(--sp-15) + var(--sp-5)) var(--sp-5) var(--sp-6);
 	border-radius: var(--r-md);
 }
 .sess-title {

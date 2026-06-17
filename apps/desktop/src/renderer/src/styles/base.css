@@ -233,6 +233,16 @@ button {
 	box-shadow: var(--shadow-ring);
 	cursor: not-allowed;
 }
+.btn-danger {
+	background: var(--error);
+	color: #fff;
+	padding: 10px 18px;
+	border-radius: var(--r-lg);
+	box-shadow: 0 0 0 1px var(--error);
+}
+.btn-danger:hover {
+	background: color-mix(in srgb, var(--error) 90%, #000);
+}
 .btn-sand {
 	background: var(--surface-2);
 	color: var(--text-strong);
