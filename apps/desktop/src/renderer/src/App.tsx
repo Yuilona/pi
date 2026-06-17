@@ -255,7 +255,9 @@ export function App() {
 			if (e.type !== "session_renamed") return;
 			void refreshSessions();
 			setRetitledPath(e.path);
-			setTimeout(() => setRetitledPath((p) => (p === e.path ? undefined : p)), 1300);
+			// Hold the `retitled` class long enough for the full 2.5s CSS sweep to finish (a shorter timer cut
+			// the light sweep off mid-stroke). Path-matched so a later retitle's highlight isn't cleared early.
+			setTimeout(() => setRetitledPath((p) => (p === e.path ? undefined : p)), 2600);
 		});
 	}, [refreshSessions]);
 
