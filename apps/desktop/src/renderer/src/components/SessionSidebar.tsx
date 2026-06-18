@@ -143,8 +143,19 @@ function ProjectGroup({
 	onRequestDelete,
 }: ProjectGroupProps) {
 	const [expanded, setExpanded] = useState(false);
+	// One-shot reveal for the rows uncovered by "Show more". Gated to the toggle moment (a brief flag) so the
+	// per-streaming-tick sidebar refresh doesn't re-animate the already-visible rows (which would flicker).
+	const [justExpanded, setJustExpanded] = useState(false);
 	const overflow = group.sessions.length - PINNED;
 	const visible = expanded ? group.sessions : group.sessions.slice(0, PINNED);
+	const toggleMore = () => {
+		const next = !expanded;
+		setExpanded(next);
+		if (next) {
+			setJustExpanded(true);
+			window.setTimeout(() => setJustExpanded(false), 400);
+		}
+	};
 
 	return (
 		<section className={`sess-group ${isCurrent ? "current" : ""}`}>
@@ -164,10 +175,12 @@ function ProjectGroup({
 				</button>
 			</header>
 
-			{visible.map((s) => (
+			{visible.map((s, i) => (
 				<div
 					key={s.path}
-					className={`sess-wrap ${s.path === activePath ? "active" : ""} ${s.path === retitledPath ? "retitled" : ""}`}
+					className={`sess-wrap ${s.path === activePath ? "active" : ""} ${s.path === retitledPath ? "retitled" : ""} ${
+						justExpanded && i >= PINNED ? "sess-reveal" : ""
+					}`}
 				>
 					<button type="button" className="sess" onClick={() => onSelect(s.path)}>
 						<div className="sess-title">{s.title}</div>
@@ -188,7 +201,7 @@ function ProjectGroup({
 			))}
 
 			{overflow > 0 && (
-				<button type="button" className="sess-more" onClick={() => setExpanded((v) => !v)}>
+				<button type="button" className="sess-more" onClick={toggleMore}>
 					{expanded ? "Show less" : `Show ${overflow} more…`}
 				</button>
 			)}

@@ -4,7 +4,7 @@
 	position: fixed;
 	inset: 0;
 	z-index: 40;
-	background: rgba(20, 20, 19, 0.28);
+	background: var(--scrim);
 	backdrop-filter: blur(2px);
 	animation: fade 0.16s var(--ease);
 }
@@ -139,9 +139,22 @@
 .provider-head.open .chev {
 	transform: rotate(90deg);
 }
+/* Smooth bidirectional collapse: the grid row tracks tween 0fr <-> 1fr while the inner clips. */
+.provider-models {
+	display: grid;
+	grid-template-rows: 0fr;
+	transition: grid-template-rows 0.22s var(--ease);
+}
+.provider-models.open {
+	grid-template-rows: 1fr;
+}
+.provider-models-inner {
+	overflow: hidden;
+	min-height: 0;
+}
 
 .badge {
-	font-size: 10.5px;
+	font-size: var(--fs-overline);
 	letter-spacing: 0.2px;
 	padding: 2px 7px;
 	border-radius: var(--r-pill);
@@ -176,6 +189,9 @@
 .model-row:hover {
 	background: var(--bg);
 }
+.model-row:active {
+	background: var(--surface-2);
+}
 .model-row.current {
 	background: color-mix(in srgb, var(--brand) 10%, transparent);
 	box-shadow: var(--shadow-ring);
@@ -189,7 +205,7 @@
 }
 .model-row .mid {
 	font-family: var(--font-mono);
-	font-size: 11px;
+	font-size: var(--fs-label);
 	color: var(--text-3);
 }
 .model-row .tick {
@@ -220,7 +236,7 @@
 	white-space: nowrap;
 }
 .key-row .pinfo .s {
-	font-size: 10.5px;
+	font-size: var(--fs-overline);
 	color: var(--text-3);
 }
 .key-row input {
@@ -371,9 +387,12 @@
 .mode-opt:hover {
 	border-color: var(--border-strong);
 }
+.mode-opt:active {
+	border-color: var(--ring-deep);
+}
 .mode-opt.on {
 	background: color-mix(in srgb, var(--brand) 8%, transparent);
-	box-shadow: 0 0 0 1px var(--brand);
+	box-shadow: var(--shadow-ring-brand);
 	border-color: transparent;
 }
 .mode-opt-t {

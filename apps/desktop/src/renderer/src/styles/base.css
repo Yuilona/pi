@@ -48,6 +48,7 @@ p {
 a {
 	color: var(--brand-coral);
 	text-decoration: none;
+	transition: color 0.14s var(--ease);
 }
 a:hover {
 	color: var(--brand);
@@ -162,7 +163,7 @@ button {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-family: var(--font-mono);
-	font-size: 12.5px;
+	font-size: var(--fs-mono-sm);
 }
 
 /* ---- Icon buttons ---- */
@@ -198,7 +199,7 @@ button {
 }
 .winctl .icon-btn:last-child:hover {
 	background: var(--error);
-	color: #fff;
+	color: var(--on-brand);
 }
 
 /* ============================ Buttons ============================ */
@@ -225,10 +226,10 @@ button {
 	color: var(--on-brand);
 	padding: 10px 18px;
 	border-radius: var(--r-lg);
-	box-shadow: 0 0 0 1px var(--brand);
+	box-shadow: var(--shadow-ring-brand);
 }
 .btn-brand:hover {
-	background: color-mix(in srgb, var(--brand) 92%, #000);
+	background: color-mix(in srgb, var(--brand) 92%, var(--ink));
 }
 .btn-brand:disabled {
 	background: var(--surface-2);
@@ -238,13 +239,13 @@ button {
 }
 .btn-danger {
 	background: var(--error);
-	color: #fff;
+	color: var(--on-brand);
 	padding: 10px 18px;
 	border-radius: var(--r-lg);
-	box-shadow: 0 0 0 1px var(--error);
+	box-shadow: var(--shadow-ring-error);
 }
 .btn-danger:hover {
-	background: color-mix(in srgb, var(--error) 90%, #000);
+	background: color-mix(in srgb, var(--error) 90%, var(--ink));
 }
 .btn-sand {
 	background: var(--surface-2);

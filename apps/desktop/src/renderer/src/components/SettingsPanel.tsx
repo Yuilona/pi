@@ -258,22 +258,30 @@ export function SettingsPanel(props: SettingsPanelProps) {
 											{ready ? "ready" : "no key"}
 										</span>
 									</button>
-									{open &&
-										shown.map((m) => {
-											const isCurrent = currentModel?.provider === m.provider && currentModel?.id === m.id;
-											return (
-												<button
-													type="button"
-													key={m.id}
-													className={`model-row ${isCurrent ? "current" : ""} ${m.available ? "" : "locked"}`}
-													onClick={() => selectModel(m)}
-												>
-													<span className="mname">{m.label}</span>
-													<span className="mid">{m.id}</span>
-													{isCurrent && <IconCheck className="tick" />}
-												</button>
-											);
-										})}
+									{/* Always-mounted so the section can animate both open AND closed via the grid
+									    0fr->1fr transition (a conditional mount can't tween on close). Collapsed rows
+									    are pulled out of the tab order. */}
+									<div className={`provider-models ${open ? "open" : ""}`}>
+										<div className="provider-models-inner">
+											{shown.map((m) => {
+												const isCurrent =
+													currentModel?.provider === m.provider && currentModel?.id === m.id;
+												return (
+													<button
+														type="button"
+														key={m.id}
+														className={`model-row ${isCurrent ? "current" : ""} ${m.available ? "" : "locked"}`}
+														onClick={() => selectModel(m)}
+														tabIndex={open ? 0 : -1}
+													>
+														<span className="mname">{m.label}</span>
+														<span className="mid">{m.id}</span>
+														{isCurrent && <IconCheck className="tick" />}
+													</button>
+												);
+											})}
+										</div>
+									</div>
 								</div>
 							);
 						})}

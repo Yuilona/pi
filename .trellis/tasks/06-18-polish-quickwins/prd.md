@@ -63,12 +63,19 @@ mostly-CSS** quick-wins so they aren't lost. Each item is a surgical change with
       app.css `.content`/`.suggestions`), so verify both empty and in-thread views.
 
 ## Acceptance Criteria
-- [ ] AC1. No raw off-scale font-size / pure-white / pure-black-mix / hardcoded scrim remains in the files
-      listed (grep clean); all flow from tokens.
-- [ ] AC2. Every interactive control has a visible hover AND pressed state; color changes transition (no snap).
-- [ ] AC3. Settings sections and the sidebar overflow expand/collapse smoothly (no per-tick flicker).
-- [ ] AC4. Light + dark screenshots (via `PI_SHOT` / `PI_THEME=dark`, no API tokens) look correct.
-- [ ] AC5. `npm run typecheck && npm run lint && npm run test && npm run build` green.
+- [x] AC1. The enumerated off-scale font-sizes (12.5/11/10.5/9px), pure-white literals (winctl close,
+      .btn-danger, .attach-x), black-mix hovers, and modal scrims now flow from tokens
+      (--fs-mono-sm/--fs-micro, --on-brand, --ink, --scrim, --shadow-ring-brand/error). Deliberate
+      exceptions kept: the always-dark image lightbox palette (post-audit component, fixed dark by design),
+      `.banner-error`'s intentional 25%-alpha ring, and on-scale `12px` literals.
+- [x] AC2. Added pressed states (.sess-wrap/.cmd-item/.model-opt/.model-row/.mode-opt :active) and color
+      transitions on `a` and .thinking-toggle; .send now transitions box-shadow in sync with its bg.
+- [x] AC3. Settings provider sections collapse via grid 0fr<->1fr (always-mounted inner, true bidirectional,
+      collapsed rows out of tab order); the sidebar "Show more" rows get a one-shot reveal gated to the
+      toggle (a 400ms flag), so the per-streaming-tick refresh doesn't re-animate them.
+- [x] AC4. Light empty-state shot confirms E1 (wider 880px column, roomier suggestions); dark settings shot
+      confirms A5 (darker scrim) + the provider collapse rendering. No API tokens spent.
+- [x] AC5. `npm run typecheck && npm run lint && npm run test && npm run build` all green (25 tests).
 
 ## Notes
 - Child of `06-15-desktop-app`. **Planned now, NOT to be implemented yet** — do not `task.py start` until the

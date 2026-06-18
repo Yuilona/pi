@@ -54,6 +54,9 @@
 	/* warm sand — clearly distinct from the sidebar's near-surface background */
 	background: var(--surface-2);
 }
+.sess-wrap:active:not(.active) {
+	background: var(--ring);
+}
 .sess-wrap.active {
 	background: var(--surface);
 	/* inset so the 1px ring stays inside this row and never bleeds onto a hovered neighbor */
@@ -166,7 +169,7 @@
 }
 .sess-group-cur {
 	flex: 0 0 auto;
-	font-size: 9px;
+	font-size: var(--fs-micro);
 	letter-spacing: 0.2px;
 	text-transform: uppercase;
 	color: var(--brand);
@@ -227,6 +230,19 @@
 	color: var(--text-2);
 	background: var(--surface);
 }
+/* One-shot entrance for rows revealed by "Show more" (applied only at the toggle moment, never on the
+   per-tick sidebar refresh). Honors reduce-motion by simply not applying. */
+@media (prefers-reduced-motion: no-preference) {
+	.sess-reveal {
+		animation: sess-reveal 0.28s var(--ease) both;
+	}
+}
+@keyframes sess-reveal {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+}
 
 /* Soft organic glow in the canvas — depth via warm light, not shadows. */
 .main::before {
@@ -248,6 +264,11 @@
 .content {
 	width: min(100% - var(--sp-20), var(--reading-col));
 	margin: 0 auto;
+}
+/* The empty state breathes wider than the reading column so the 3 suggestion cards aren't pinched; the
+   message thread and composer keep --reading-col. */
+.content.content-empty {
+	width: min(100% - var(--sp-20), 880px);
 }
 
 /* ============================ Empty state ============================ */
@@ -389,14 +410,15 @@
 	color: var(--on-brand);
 	display: grid;
 	place-items: center;
-	box-shadow: 0 0 0 1px var(--brand);
+	box-shadow: var(--shadow-ring-brand);
 	transition:
 		background 0.16s var(--ease),
+		box-shadow 0.16s var(--ease),
 		transform 0.06s var(--ease),
 		opacity 0.16s var(--ease);
 }
 .send:hover {
-	background: color-mix(in srgb, var(--brand) 92%, #000);
+	background: color-mix(in srgb, var(--brand) 92%, var(--ink));
 }
 .send:active {
 	transform: translateY(0.5px);
@@ -419,7 +441,7 @@
 }
 .composer-hint kbd {
 	font-family: var(--font-mono);
-	font-size: 11px;
+	font-size: var(--fs-label);
 	background: var(--surface-2);
 	border-radius: var(--r-sharp);
 	padding: 1px 5px;
@@ -472,6 +494,10 @@
 .cmd-item.sel {
 	background: var(--surface-2);
 }
+.cmd-item:active,
+.model-opt:active {
+	background: var(--ring);
+}
 .cmd-name {
 	flex: 0 0 auto;
 	font-family: var(--font-mono);
@@ -490,7 +516,7 @@
 }
 .cmd-kind {
 	flex: 0 0 auto;
-	font-size: 9px;
+	font-size: var(--fs-micro);
 	letter-spacing: 0.4px;
 	text-transform: uppercase;
 	color: var(--text-3);
@@ -657,11 +683,11 @@
 	place-items: center;
 	border: none;
 	border-radius: var(--r-pill);
-	background: rgba(20, 20, 19, 0.6);
-	color: #fff;
+	background: color-mix(in srgb, var(--ink) 60%, transparent);
+	color: var(--on-brand);
 }
 .attach-x:hover {
-	background: rgba(20, 20, 19, 0.85);
+	background: color-mix(in srgb, var(--ink) 85%, transparent);
 }
 .attach-btn {
 	-webkit-app-region: no-drag;
@@ -718,7 +744,7 @@
 }
 .mode-cyc {
 	font-family: var(--font-mono);
-	font-size: 11px;
+	font-size: var(--fs-label);
 	color: var(--text-3);
 	margin-left: var(--sp-2);
 }

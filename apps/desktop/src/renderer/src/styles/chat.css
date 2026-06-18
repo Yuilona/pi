@@ -202,6 +202,7 @@
 	background: var(--surface-2);
 	padding: 0.12em 0.4em;
 	border-radius: var(--r-sm);
+	box-shadow: var(--shadow-ring);
 }
 .md pre {
 	background: var(--surface);
@@ -299,6 +300,7 @@
 	font-size: var(--fs-caption);
 	font-style: italic;
 	padding: 0;
+	transition: color 0.14s var(--ease);
 }
 .thinking-toggle:hover {
 	color: var(--text-2);
@@ -363,7 +365,7 @@
 }
 .tool-arg {
 	font-family: var(--font-mono);
-	font-size: 12.5px;
+	font-size: var(--fs-mono-sm);
 	color: var(--text-3);
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -392,7 +394,7 @@
 .tool-peek {
 	padding: 0 var(--sp-6) var(--sp-4) calc(var(--sp-6) + 18px + var(--sp-4));
 	font-family: var(--font-mono);
-	font-size: 12.5px;
+	font-size: var(--fs-mono-sm);
 	color: var(--text-3);
 	overflow: hidden;
 	text-overflow: ellipsis;

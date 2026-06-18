@@ -375,7 +375,7 @@ export function App() {
 									{hasMessages ? (
 										<MessageList state={state} onSubmitEdit={submitEdit} />
 									) : (
-										<div className="content" style={{ minHeight: "100%" }}>
+										<div className="content content-empty" style={{ minHeight: "100%" }}>
 											<EmptyState onPick={setInput} />
 											<StatusBanners state={state} />
 										</div>
