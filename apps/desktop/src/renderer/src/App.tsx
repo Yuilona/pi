@@ -405,7 +405,7 @@ export function App() {
 					)}
 
 					{approvals[0] && <ApprovalDialog request={approvals[0]} onResolve={resolveApproval} />}
-					<ImageViewer src={viewerSrc} onClose={() => setViewerSrc(null)} />
+					{viewerSrc && <ImageViewer src={viewerSrc} onClose={() => setViewerSrc(null)} />}
 				</div>
 			</ImageViewerContext.Provider>
 		</ViewContext.Provider>

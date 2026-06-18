@@ -473,26 +473,48 @@
 	color: var(--brand);
 }
 
-/* ---- Image lightbox (click a sent image to enlarge; click anywhere / Esc to close) ---- */
+/* ---- Image lightbox: opens contained (whole image visible), wheel-zooms about the cursor, drag to pan.
+   Click the dim backdrop / ✕ / Esc to close, double-click to re-fit. Geometry is driven by an inline
+   transform on the <img>; the container just clips and dims. ---- */
 .lightbox {
 	position: fixed;
 	inset: 0;
 	z-index: 100;
-	display: grid;
-	place-items: center;
-	padding: var(--sp-20);
+	overflow: hidden;
 	border: none;
-	cursor: zoom-out;
-	background: rgba(20, 20, 19, 0.72);
+	background: rgba(20, 20, 19, 0.82);
 	animation: lightbox-in 0.16s var(--ease);
+	touch-action: none;
+	user-select: none;
 }
 .lightbox img {
-	max-width: 100%;
-	max-height: 100%;
-	border-radius: var(--r-lg);
-	box-shadow:
-		var(--shadow-ring),
-		rgba(0, 0, 0, 0.4) 0 24px 64px;
+	-webkit-user-drag: none;
+}
+.lightbox-close {
+	position: absolute;
+	top: var(--sp-10);
+	right: var(--sp-10);
+	width: 36px;
+	height: 36px;
+	display: grid;
+	place-items: center;
+	padding: 0;
+	border: none;
+	border-radius: var(--r-md);
+	color: rgba(255, 255, 255, 0.86);
+	background: rgba(40, 40, 38, 0.55);
+	backdrop-filter: blur(6px);
+	transition:
+		background 0.14s var(--ease),
+		color 0.14s var(--ease);
+}
+.lightbox-close:hover {
+	background: rgba(60, 60, 57, 0.78);
+	color: #fff;
+}
+.lightbox-close svg {
+	width: 18px;
+	height: 18px;
 }
 @keyframes lightbox-in {
 	from {
