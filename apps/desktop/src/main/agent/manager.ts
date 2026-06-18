@@ -353,6 +353,26 @@ export class AgentManager {
 		await this.session?.abort();
 	}
 
+	/**
+	 * Edit-and-resend: rewind the session to before the last user message via pi's own tree navigation
+	 * (`navigateTree`, no summary). This stays in the SAME session file (an in-file branch), truncates the
+	 * in-memory context, and returns the message's original text for the composer. Serialized via the op
+	 * lock so it can't interleave with a switch/new/delete. Returns null when there's nothing to edit or a
+	 * turn is in flight; the renderer then re-fetches the transcript (this emits no message events) and a
+	 * later send() continues from the rewound point.
+	 */
+	async editLastMessage(): Promise<string | null> {
+		return this.runExclusive(async () => {
+			const session = this.session;
+			if (!session || session.isStreaming) return null;
+			const target = session.getUserMessagesForForking().at(-1);
+			if (!target) return null;
+			const { editorText, cancelled } = await session.navigateTree(target.entryId, { summarize: false });
+			if (cancelled) return null;
+			return editorText ?? target.text ?? "";
+		});
+	}
+
 	async newSession(): Promise<void> {
 		return this.runExclusive(() => this.newSessionImpl());
 	}

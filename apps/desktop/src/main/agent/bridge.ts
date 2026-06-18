@@ -46,6 +46,7 @@ export function registerAgentBridge(getWindow: () => BrowserWindow | null, cwd: 
 	ipcMain.handle(IPC.getStats, () => manager.getStats());
 	ipcMain.handle(IPC.newChatInCwd, (_e, dir: string) => manager.setCwd(dir));
 	ipcMain.handle(IPC.abort, () => manager.abort());
+	ipcMain.handle(IPC.editLastMessage, () => manager.editLastMessage());
 	ipcMain.handle(IPC.newSession, () => manager.newSession());
 	ipcMain.handle(IPC.setModel, (_e, provider: string, id: string) => manager.setModel(provider, id));
 	ipcMain.handle(IPC.setThinking, (_e, level: ThinkingLevelDto) => manager.setThinking(level));

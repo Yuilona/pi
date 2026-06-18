@@ -22,6 +22,7 @@ const api: PiApi = {
 	getStats: () => ipcRenderer.invoke(IPC.getStats),
 	newChatInCwd: (cwd: string) => ipcRenderer.invoke(IPC.newChatInCwd, cwd),
 	abort: () => ipcRenderer.invoke(IPC.abort),
+	editLastMessage: () => ipcRenderer.invoke(IPC.editLastMessage) as Promise<string | null>,
 	newSession: () => ipcRenderer.invoke(IPC.newSession),
 	setModel: (provider: string, id: string) => ipcRenderer.invoke(IPC.setModel, provider, id),
 	setThinking: (level: ThinkingLevelDto) => ipcRenderer.invoke(IPC.setThinking, level),

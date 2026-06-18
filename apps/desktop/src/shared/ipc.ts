@@ -12,6 +12,7 @@ export const IPC = {
 	// agent control (renderer -> main, invoke/handle)
 	send: "pi:send",
 	abort: "pi:abort",
+	editLastMessage: "pi:editLastMessage",
 	newSession: "pi:newSession",
 	setModel: "pi:setModel",
 	setThinking: "pi:setThinking",
@@ -233,6 +234,13 @@ export interface PiApi {
 	/** Start a fresh chat in a specific directory (a project's cwd, or the app dir for a general chat). */
 	newChatInCwd(cwd: string): Promise<void>;
 	abort(): Promise<void>;
+	/**
+	 * Rewind the session to before the last user message (in-place, same session file) and return that
+	 * message's original text so the composer can be refilled for editing. Returns null when there is no
+	 * editable last user message or a turn is in flight. After this resolves the caller must re-fetch the
+	 * transcript (the thread truncates) — navigateTree emits no message events.
+	 */
+	editLastMessage(): Promise<string | null>;
 	newSession(): Promise<void>;
 	setModel(provider: string, id: string): Promise<void>;
 	setThinking(level: ThinkingLevelDto): Promise<void>;

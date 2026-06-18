@@ -298,6 +298,22 @@ export function App() {
 		setAttachments([]);
 	}, [input, attachments, state.streaming, send, commands, runCommand]);
 
+	// Commit an in-place edit of the last user message: rewind the session to before it (same file) so the
+	// edited message and the reply that followed drop out, then resend the new text as a fresh turn from the
+	// rewound point. The editing UI lives in the bubble (UserBubble); this only fires on save. No-op while
+	// streaming or when the text is empty.
+	const submitEdit = useCallback(
+		async (text: string) => {
+			const trimmed = text.trim();
+			if (!trimmed || state.streaming) return;
+			const original = await window.pi.editLastMessage();
+			if (original == null) return;
+			await loadTranscript(); // the edited message + its reply drop out of the thread
+			send(trimmed); // resend the edited text → a new turn continues from here
+		},
+		[state.streaming, loadTranscript, send],
+	);
+
 	const chooseCwd = useCallback(async () => {
 		const dir = await window.pi.chooseCwd();
 		if (dir) {
@@ -357,7 +373,7 @@ export function App() {
 							<>
 								<div className="scroll">
 									{hasMessages ? (
-										<MessageList state={state} />
+										<MessageList state={state} onSubmitEdit={submitEdit} />
 									) : (
 										<div className="content" style={{ minHeight: "100%" }}>
 											<EmptyState onPick={setInput} />

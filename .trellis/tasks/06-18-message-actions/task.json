@@ -1,7 +1,7 @@
 {
-  "id": "desktop-app",
-  "name": "desktop-app",
-  "title": "Pi desktop agent app (Electron+React)",
+  "id": "message-actions",
+  "name": "message-actions",
+  "title": "Message actions: copy + edit",
   "description": "",
   "status": "in_progress",
   "dev_type": null,
@@ -10,7 +10,7 @@
   "priority": "P2",
   "creator": "hbw",
   "assignee": "hbw",
-  "createdAt": "2026-06-15",
+  "createdAt": "2026-06-18",
   "completedAt": null,
   "branch": null,
   "base_branch": "main",
@@ -18,12 +18,8 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [
-    "06-18-concurrent-sessions",
-    "06-18-polish-quickwins",
-    "06-18-message-actions"
-  ],
-  "parent": null,
+  "children": [],
+  "parent": "06-15-desktop-app",
   "relatedFiles": [],
   "notes": "",
   "meta": {}

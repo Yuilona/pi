@@ -32,10 +32,15 @@ function Working() {
 	);
 }
 
-export function MessageList({ state }: { state: ChatState }) {
+export function MessageList({ state, onSubmitEdit }: { state: ChatState; onSubmitEdit?: (text: string) => void }) {
 	const endRef = useRef<HTMLDivElement>(null);
 	const prevCount = useRef(0);
 	const { showThinking } = useView();
+
+	// The last user message is the only editable one (edit = rewind to before it, resend). Editing is
+	// disabled mid-stream. Computed once per render; passed only to that bubble so others don't show it.
+	let lastUserId: string | undefined;
+	for (const m of state.messages) if (m.role === "user") lastUserId = m.id;
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: scroll on any transcript/stream change
 	useEffect(() => {
@@ -88,7 +93,12 @@ export function MessageList({ state }: { state: ChatState }) {
 		<div className="content thread">
 			{state.messages.map((m) =>
 				m.role === "user" ? (
-					<UserBubble key={m.id} message={m} />
+					<UserBubble
+						key={m.id}
+						message={m}
+						editable={m.id === lastUserId && !state.streaming}
+						onSubmitEdit={onSubmitEdit}
+					/>
 				) : (
 					<AssistantBubble
 						key={m.id}
