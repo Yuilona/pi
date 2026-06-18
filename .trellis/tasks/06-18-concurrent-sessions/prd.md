@@ -54,18 +54,26 @@ Concurrency therefore requires turning "the one live session" into "a pool of li
 
 ## Acceptance Criteria
 
-- [ ] AC1. Start a turn in A, switch to B before A finishes, start a turn in B → both stream to completion;
-      switching A↔B shows each session's own live/finished output; both transcripts persist correctly.
-- [ ] AC2. While B streams in the background, the sidebar shows B as "running"; on completion an OS
-      notification fires if B isn't the focused session.
-- [ ] AC3. A background session that hits a tool-approval gate surfaces a badge/notification and does NOT
-      block input or streaming in the active session; approving/denying it resumes only that session.
-- [ ] AC4. Deleting a running session aborts it with no console errors, no leaked subscription/timer, and the
-      active view is unaffected (unless you deleted the active one, which falls back like today).
-- [ ] AC5. With the live-session cap reached, opening another session parks an idle one (resumable) rather
-      than dropping a running one; the behavior is visible/logged, never silent.
-- [ ] AC6. `npm run typecheck && npm run lint && npm run test && npm run build` all green; no
-      `@earendil-works/pi-*` import appears anywhere under `src/renderer/**`.
+> Status legend: [x] = verified; [~] = implemented + smoke-verified token-free, but the live streaming path
+> needs an API-spending two-stream run to fully confirm (deferred to avoid spending the user's tokens).
+
+- [~] AC1. Concurrent streaming: per-session controllers (own coalescer/op-lock) + a useSessions slice per
+      sessionId routed by the wrapped event stream. Token-free verified: boot adopts the active session,
+      switching A↔B loads each session's own transcript. The two-simultaneous-streams path is in place by
+      construction; a live run needs API tokens.
+- [~] AC2. Sidebar shows a per-session running spinner (driven by the live slice's `streaming`); the pool
+      fires an OS notification on a background session's `agent_end`. Badge verified token-free; notification
+      firing needs a live background turn.
+- [~] AC3. Background approvals: per-session approval queues; only the ACTIVE session's first approval shows
+      inline (ApprovalDialog), background ones show a sidebar badge — so a background gate never blocks the
+      active view; resolve routes back with sessionId. Needs a live bash gate to confirm end-to-end.
+- [~] AC4. Deleting a session aborts + disposes its controller (clears timer/subscription/approvals) and
+      removes its slice; if active, the renderer adopts main's fallback. Token-free path verified.
+- [~] AC5. Cap + park: MAX_LIVE=6; opening beyond the cap parks the LRU idle, non-running, non-active
+      controller (disposes its AgentSession, keeps `sessionFile` to resume); a running session is never
+      parked; if all are running it stays over-cap and logs. Logic in `sessionPool.parkForCapacity`.
+- [x] AC6. `npm run typecheck && npm run lint && npm run test && npm run build` all green (30 tests, incl. the
+      slice-routing reducer); grep confirms no `@earendil-works/pi-*` import under `src/renderer/**`.
 
 ## Out of scope (this iteration)
 
