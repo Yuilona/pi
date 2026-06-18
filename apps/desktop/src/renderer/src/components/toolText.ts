@@ -17,6 +17,31 @@ export function toolArgSummary(args: unknown): string {
 	return "";
 }
 
+export interface SkillInvocationInfo {
+	name: string;
+	/** The SKILL.md body the command expanded to (shown only when expanded). */
+	content?: string;
+	/** Any real user text the user typed after the command (e.g. `/skill:foo do X`). */
+	userMessage?: string;
+}
+
+/**
+ * On send, pi expands a `/skill:name [args]` command into a `<skill name="..." location="...">…</skill>`
+ * block that becomes the user message (mirrors parseSkillBlock in coding-agent). Detect it so a sent skill
+ * command renders as a collapsed skill card instead of the raw block text. Also handles a bare `/skill:name`
+ * in case expansion was skipped. Returns null for ordinary user messages.
+ */
+export function parseSkillInvocation(text: string): SkillInvocationInfo | null {
+	const t = text.trim();
+	const block = t.match(/^<skill name="([^"]+)" location="[^"]*">\n([\s\S]*?)\n<\/skill>(?:\n\n([\s\S]+))?$/);
+	if (block) {
+		return { name: block[1], content: block[2]?.trim() || undefined, userMessage: block[3]?.trim() || undefined };
+	}
+	const cmd = t.match(/^\/skill:([a-z0-9-]+)(?:\s+([\s\S]+))?$/i);
+	if (cmd) return { name: cmd[1], userMessage: cmd[2]?.trim() || undefined };
+	return null;
+}
+
 /**
  * Pi activates a skill by `read`ing its SKILL.md (see formatSkillsForPrompt in coding-agent). Detect
  * that and return the skill's name (its SKILL.md parent folder), or a markdown file under a skills/

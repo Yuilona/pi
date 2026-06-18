@@ -24,7 +24,7 @@
 	inset: 0;
 	z-index: -1;
 	border-radius: inherit;
-	padding: 1.5px;
+	padding: 2.5px;
 	background: conic-gradient(
 		from var(--skill-angle),
 		var(--brand),
@@ -50,6 +50,40 @@
 	background: radial-gradient(60% 120% at 0% 0%, color-mix(in srgb, var(--brand) 14%, transparent), transparent 60%);
 	opacity: 0;
 	transition: opacity 0.4s var(--ease);
+}
+
+/* A bright warm point of light that traces the border at a constant PERIMETER speed. A conic gradient
+   sweeps by ANGLE about the card centre, so on a wide, short card it races across the short ends and
+   crawls along the long edges — never visually even. Instead we stroke an SVG rect and slide a dash
+   around it: with pathLength=100 the dash and stroke-dashoffset are fractions of the perimeter, so a
+   linear dashoffset is a constant linear speed on any card width. Hidden unless the OS allows motion. */
+.skill-ring {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	overflow: visible;
+	opacity: 0;
+	/* Warm coral halo + a tight near-white core, so the light reads luminous but stays restrained. */
+	filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand-coral) 60%, transparent))
+		drop-shadow(0 0 2px color-mix(in srgb, #fff 70%, transparent));
+}
+.skill-ring rect {
+	x: 1.25px;
+	y: 1.25px;
+	width: calc(100% - 2.5px);
+	height: calc(100% - 2.5px);
+	rx: var(--r-lg);
+	ry: var(--r-lg);
+	fill: none;
+	stroke: #fff3da;
+	stroke-width: 2.5px;
+	stroke-linecap: round;
+	stroke-dasharray: 11 89; /* a short bright segment (~11% of the perimeter) + gap */
+	stroke-dashoffset: 0;
+	opacity: 0.8; /* dimmed peak brightness */
 }
 
 .skill-head {
@@ -175,6 +209,29 @@
 		--skill-angle: 360deg;
 	}
 }
+/* Two laps on appearance, each at a constant perimeter speed (linear stroke-dashoffset; pathLength=100 so
+   -100 == one lap): a slow first lap, then a second lap at exactly 2x the speed (same -100 in half the
+   time). The tail eases out — the light keeps gliding a little and decelerates to a soft stop while fading
+   away — so it dissolves smoothly instead of halting then dimming in place. (opacity 0.8 = dimmed peak.) */
+@keyframes skill-trace {
+	0% {
+		stroke-dashoffset: 0;
+		opacity: 0.8;
+	}
+	46% {
+		stroke-dashoffset: -100;
+		opacity: 0.8;
+	}
+	69% {
+		stroke-dashoffset: -200;
+		opacity: 0.8;
+		animation-timing-function: ease-out;
+	}
+	100% {
+		stroke-dashoffset: -255;
+		opacity: 0;
+	}
+}
 @keyframes skill-in {
 	from {
 		opacity: 0;
@@ -219,13 +276,18 @@
 	.skill-card {
 		animation: skill-in 0.42s var(--ease) both;
 	}
+	/* On appearance the light traces the border twice at a steady perimeter speed, then fades out — leaving
+	   the steady warm base ring underneath. */
+	.skill-ring {
+		opacity: 1;
+	}
+	.skill-ring rect {
+		animation: skill-trace 1.7s linear both;
+	}
 	.skill-pending {
 		animation:
 			skill-in 0.42s var(--ease) both,
 			skill-glow 2.2s ease-in-out infinite;
-	}
-	.skill-pending::before {
-		animation: skill-spin 3.2s linear infinite;
 	}
 	.skill-pending::after {
 		animation: skill-breathe 2.2s ease-in-out infinite;
