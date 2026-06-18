@@ -210,19 +210,21 @@
 	}
 }
 /* Two laps on appearance, each at a constant perimeter speed (linear stroke-dashoffset; pathLength=100 so
-   -100 == one lap): a slow first lap, then a second lap at exactly 2x the speed (same -100 in half the
-   time). The tail eases out — the light keeps gliding a little and decelerates to a soft stop while fading
-   away — so it dissolves smoothly instead of halting then dimming in place. (opacity 0.8 = dimmed peak.) */
+   -100 == one lap): a slow first lap, then a fast second lap — 4x the first lap's speed (the same -100 in a
+   quarter of the time). The tail eases out — the light keeps gliding a little and decelerates to a soft stop
+   while fading away — so it dissolves smoothly instead of halting then dimming in place. The keyframe stops
+   (52% / 65%) at 1.5s keep lap 1 (~0.78s) and the tail (~0.53s) unchanged while lap 2 drops to ~0.2s.
+   (opacity 0.8 = dimmed peak.) */
 @keyframes skill-trace {
 	0% {
 		stroke-dashoffset: 0;
 		opacity: 0.8;
 	}
-	46% {
+	52% {
 		stroke-dashoffset: -100;
 		opacity: 0.8;
 	}
-	69% {
+	65% {
 		stroke-dashoffset: -200;
 		opacity: 0.8;
 		animation-timing-function: ease-out;
@@ -282,7 +284,7 @@
 		opacity: 1;
 	}
 	.skill-ring rect {
-		animation: skill-trace 1.7s linear both;
+		animation: skill-trace 1.5s linear both;
 	}
 	.skill-pending {
 		animation:
