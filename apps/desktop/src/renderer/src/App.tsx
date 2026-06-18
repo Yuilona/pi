@@ -427,7 +427,10 @@ export function App() {
 							<>
 								<div className="scroll">
 									{hasMessages ? (
-										<MessageList state={state} onSubmitEdit={submitEdit} />
+										// Key by the active session so switching cleanly REMOUNTS the thread: message ids
+										// (h1/h2…) collide across sessions, so without this React reuses bubble instances and
+										// their internal hook state (smoothed text, thinking/tool expand) leaks between sessions.
+										<MessageList key={activeId ?? "none"} state={state} onSubmitEdit={submitEdit} />
 									) : (
 										<div className="content content-empty" style={{ minHeight: "100%" }}>
 											<EmptyState onPick={setInput} />

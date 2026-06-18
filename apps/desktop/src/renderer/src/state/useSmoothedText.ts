@@ -81,5 +81,10 @@ export function useSmoothedText(target: string, streaming: boolean): string {
 		};
 	}, [streaming]);
 
-	return shown;
+	// When NOT streaming, return the live `target` directly rather than the internal `shown` state. `shown`
+	// is only re-synced inside the effect above (gated on `[streaming]`), so a component instance REUSED
+	// across a session switch — same React key `h1/h2…` for both sessions' messages — would keep showing the
+	// previous session's text when its `target` prop changes without `streaming` toggling. Returning `target`
+	// makes finished/restored messages always reflect their own text; smoothing applies only while streaming.
+	return streaming ? shown : target;
 }
