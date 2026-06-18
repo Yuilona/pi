@@ -64,6 +64,49 @@
 	box-shadow: var(--shadow-ring);
 }
 
+/* ---- In-place message editor: replaces a user bubble with a roomy, scrollable edit field ---- */
+.bubble-edit {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: var(--sp-5);
+	background: var(--surface-2);
+	border-radius: var(--r-xl);
+	padding: var(--sp-8);
+	box-shadow: var(--shadow-ring-deep);
+}
+.bubble-edit-area {
+	width: 100%;
+	resize: none;
+	border: none;
+	outline: none;
+	background: transparent;
+	color: var(--text);
+	font-family: inherit;
+	font-size: var(--fs-body);
+	line-height: var(--lh-relaxed);
+	white-space: pre-wrap;
+	word-break: break-word;
+	min-height: 2.4em;
+	max-height: 50vh;
+	overflow-y: auto;
+}
+.bubble-edit-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-4);
+}
+.bubble-edit-hint {
+	margin-right: auto;
+	font-size: var(--fs-overline);
+	color: var(--text-3);
+}
+.bubble-edit-btn {
+	padding: 6px 14px;
+	border-radius: var(--r-md);
+	font-size: var(--fs-label);
+}
+
 /* ---- Assistant: no bubble — editorial prose on the canvas ---- */
 .assistant-body {
 	max-width: 100%;
@@ -71,6 +114,35 @@
 	display: flex;
 	flex-direction: column;
 	gap: var(--sp-6);
+}
+
+/* ---- Per-message actions (copy / edit): quiet at rest, revealed on row hover or keyboard focus ---- */
+.msg-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-1);
+	opacity: 0;
+	transition: opacity 0.14s var(--ease);
+}
+.row.user .msg-actions {
+	justify-content: flex-end;
+	margin-top: var(--sp-1);
+}
+.row:hover .msg-actions,
+.row:focus-within .msg-actions {
+	opacity: 1;
+}
+.icon-btn.msg-act {
+	width: 26px;
+	height: 26px;
+	color: var(--text-3);
+}
+.icon-btn.msg-act:hover {
+	background: var(--surface-2);
+	color: var(--text);
+}
+.icon-btn.msg-act.is-copied {
+	color: var(--brand);
 }
 
 /* ============================ Markdown prose ============================ */
@@ -146,6 +218,31 @@
 	font-size: var(--fs-code);
 	letter-spacing: -0.32px;
 	line-height: 1.55;
+}
+/* Fenced code block + its hover-revealed copy button. The wrapper owns the block's bottom margin so the
+   inner <pre> can sit flush, and is the positioning context for the floating button. */
+.code-wrap {
+	position: relative;
+	margin: 0 0 var(--sp-6);
+}
+.code-wrap pre {
+	margin: 0;
+}
+.code-copy {
+	position: absolute;
+	top: var(--sp-4);
+	right: var(--sp-4);
+	z-index: 1;
+	opacity: 0;
+	background: color-mix(in srgb, var(--surface) 82%, transparent);
+	transition:
+		opacity 0.14s var(--ease),
+		background 0.16s var(--ease),
+		color 0.16s var(--ease);
+}
+.code-wrap:hover .code-copy,
+.code-wrap:focus-within .code-copy {
+	opacity: 1;
 }
 .md blockquote {
 	margin: 0 0 var(--sp-6);

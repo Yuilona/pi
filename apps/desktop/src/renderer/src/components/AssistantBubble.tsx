@@ -1,11 +1,12 @@
 import type { IpcMessage } from "@shared/ipc";
 import { memo } from "react";
 import { BashCard } from "@/components/BashCard";
+import { CopyButton } from "@/components/CopyButton";
 import { Markdown } from "@/components/Markdown";
 import { SkillCard } from "@/components/SkillCard";
 import { ThinkingBlock } from "@/components/ThinkingBlock";
 import { ToolChip } from "@/components/ToolChip";
-import { skillActivation } from "@/components/toolText";
+import { messageText, skillActivation } from "@/components/toolText";
 import type { ToolState } from "@/state/chatReducer";
 import { useSmoothedText } from "@/state/useSmoothedText";
 
@@ -37,6 +38,9 @@ export const AssistantBubble = memo(function AssistantBubble({
 	tools,
 	streaming = false,
 }: AssistantBubbleProps) {
+	// Only offer "copy message" once the reply has settled and has prose — copying a half-streamed or
+	// tool-only message is noise. (memo via sameBubble keeps this out of historical re-renders.)
+	const copyText = streaming ? "" : messageText(message);
 	return (
 		<div className="row assistant">
 			<div className="assistant-body">
@@ -57,6 +61,11 @@ export const AssistantBubble = memo(function AssistantBubble({
 					}
 					return null;
 				})}
+				{copyText && (
+					<div className="msg-actions">
+						<CopyButton getText={() => copyText} label="Copy message" />
+					</div>
+				)}
 			</div>
 		</div>
 	);

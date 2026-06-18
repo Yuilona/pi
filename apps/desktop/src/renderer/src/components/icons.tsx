@@ -131,3 +131,17 @@ export const IconSparkle = (p: SVGProps<SVGSVGElement>) => (
 		<path d="M18.6 13.4c.22 1.9 1.1 2.78 3 3-1.9.22-2.78 1.1-3 3-.22-1.9-1.1-2.78-3-3 1.9-.22 2.78-1.1 3-3Z" />
 	</svg>
 );
+
+export const IconCopy = (p: SVGProps<SVGSVGElement>) => (
+	<svg {...base} width={14} height={14} {...p} aria-hidden="true">
+		<rect x="9" y="9" width="11" height="11" rx="2" />
+		<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+	</svg>
+);
+
+export const IconEdit = (p: SVGProps<SVGSVGElement>) => (
+	<svg {...base} width={14} height={14} {...p} aria-hidden="true">
+		<path d="M12 20h9" />
+		<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+	</svg>
+);

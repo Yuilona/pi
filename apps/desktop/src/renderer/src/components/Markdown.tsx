@@ -1,9 +1,10 @@
 import "katex/dist/katex.min.css";
-import { type AnchorHTMLAttributes, type ImgHTMLAttributes, memo } from "react";
+import { type AnchorHTMLAttributes, type HTMLAttributes, type ImgHTMLAttributes, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { CopyButton } from "@/components/CopyButton";
 import { normalizeMathBlocks } from "@/components/mathNormalize";
 import { useImageViewer } from "@/state/imageViewer";
 
@@ -15,6 +16,13 @@ type HastNode = {
 	properties?: Record<string, unknown>;
 	children?: HastNode[];
 };
+
+/** Collect the raw source text under a hast node — used to copy a fenced code block's contents verbatim
+ * (pre → code → text), independent of the rendered React child shape. */
+function hastText(node: HastNode): string {
+	if (node.type === "text") return node.value ?? "";
+	return (node.children ?? []).map(hastText).join("");
+}
 
 /**
  * Group runs of consecutive image-only paragraphs (and bare images) into one `.md-gallery` element, so the
@@ -82,6 +90,17 @@ export const Markdown = memo(function Markdown({ text }: { text: string }) {
 							>
 								<img src={src} alt="" loading="lazy" />
 							</button>
+						);
+					},
+					pre: ({ node, children, ...rest }: HTMLAttributes<HTMLPreElement> & { node?: HastNode }) => {
+						// One copy button per fenced block; strip a single trailing newline so paste doesn't gain a
+						// blank line. Inline `code` is untouched (only `pre` wraps fenced blocks).
+						const code = node ? hastText(node).replace(/\n$/, "") : "";
+						return (
+							<div className="code-wrap">
+								{code && <CopyButton getText={() => code} label="Copy code" className="code-copy" />}
+								<pre {...rest}>{children}</pre>
+							</div>
 						);
 					},
 				}}

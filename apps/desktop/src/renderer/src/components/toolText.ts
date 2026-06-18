@@ -1,4 +1,15 @@
+import type { IpcMessage } from "@shared/ipc";
 import type { ToolState } from "@/state/chatReducer";
+
+/** The plain text of a message — its text blocks joined. Excludes tool calls, thinking, and images, so
+ * "copy message" yields just the prose the user reads. */
+export function messageText(message: IpcMessage): string {
+	return message.content
+		.filter((b) => b.kind === "text")
+		.map((b) => (b as { text: string }).text)
+		.join("\n")
+		.trim();
+}
 
 export function toolResultText(tool: ToolState): string {
 	return (tool.result?.content ?? [])
