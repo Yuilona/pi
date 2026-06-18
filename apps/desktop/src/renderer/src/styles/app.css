@@ -73,11 +73,51 @@
 	border-radius: var(--r-md);
 }
 .sess-title {
+	display: flex;
+	align-items: center;
+	gap: var(--sp-3);
+	min-width: 0;
 	font-size: var(--fs-body-sm);
 	color: var(--text);
+}
+.sess-title-text {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+/* Per-session sidebar badges: a spinner while a (possibly background) session streams, an unread dot for a
+   background session that advanced since you last viewed it, and a terracotta-to-error approval marker. */
+.sess-spin {
+	flex: 0 0 auto;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	border: 2px solid color-mix(in srgb, var(--brand) 28%, transparent);
+	border-top-color: var(--brand);
+}
+@media (prefers-reduced-motion: no-preference) {
+	.sess-spin {
+		animation: sess-spin 0.7s linear infinite;
+	}
+}
+@keyframes sess-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+.sess-unread {
+	flex: 0 0 auto;
+	width: 7px;
+	height: 7px;
+	border-radius: var(--r-pill);
+	background: var(--brand);
+}
+.sess-approval {
+	flex: 0 0 auto;
+	width: 7px;
+	height: 7px;
+	border-radius: var(--r-pill);
+	background: var(--error);
 }
 .sess-meta {
 	font-size: var(--fs-label);

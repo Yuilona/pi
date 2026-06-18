@@ -2,13 +2,13 @@ import { join } from "node:path";
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { IPC } from "../shared/ipc.js";
 import { registerAgentBridge } from "./agent/bridge.js";
-import type { AgentManager } from "./agent/manager.js";
 import { applyProxy, loadProxyConfig } from "./agent/proxy.js";
+import type { SessionPool } from "./agent/sessionPool.js";
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL;
 
 let mainWindow: BrowserWindow | null = null;
-let manager: AgentManager | null = null;
+let pool: SessionPool | null = null;
 
 /** Open a URL in the OS browser, but only safe web/mail schemes — never hand file:, smb:, ms-msdt:,
  * javascript:, etc. to the shell, where a crafted link could launch a local protocol handler. */
@@ -119,7 +119,7 @@ app.whenReady().then(() => {
 	// Route outbound fetch through the saved proxy (if enabled) before the agent makes any request.
 	applyProxy(loadProxyConfig());
 	registerWindowControls();
-	manager = registerAgentBridge(() => mainWindow, app.getPath("home"), app.getPath("userData"));
+	pool = registerAgentBridge(() => mainWindow, app.getPath("home"), app.getPath("userData"));
 	mainWindow = createWindow();
 
 	app.on("activate", () => {
@@ -132,7 +132,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
-	manager?.dispose();
+	pool?.dispose();
 });
 
 if (isDev) {

@@ -53,6 +53,10 @@ interface SettingsPanelProps {
 	mode: PermissionMode;
 	onSetMode: (m: PermissionMode) => void;
 	currentModel?: { provider: string; id: string };
+	/** Set the active session's model (App owns the active session id). */
+	onPickModel: (provider: string, id: string) => Promise<void> | void;
+	/** Set the active session's thinking level. */
+	onPickThinking: (level: ThinkingLevelDto) => void;
 	onChanged: () => void;
 }
 
@@ -67,6 +71,8 @@ export function SettingsPanel(props: SettingsPanelProps) {
 		mode,
 		onSetMode,
 		currentModel,
+		onPickModel,
+		onPickThinking,
 		onChanged,
 	} = props;
 	const [models, setModels] = useState<ModelInfoDto[]>([]);
@@ -137,7 +143,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 	const selectModel = async (m: ModelInfoDto) => {
 		if (!m.available || busy) return;
 		setBusy(true);
-		await window.pi.setModel(m.provider, m.id);
+		await onPickModel(m.provider, m.id);
 		setBusy(false);
 		onChanged();
 	};
@@ -175,7 +181,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
 	const pickThinking = (level: ThinkingLevelDto) => {
 		setThinking(level);
-		void window.pi.setThinking(level);
+		onPickThinking(level);
 	};
 
 	// API keys: only show providers that already have a key; fold the rest behind a toggle so the long

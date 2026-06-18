@@ -1,70 +1,95 @@
 import { type BrowserWindow, dialog, ipcMain, Notification } from "electron";
 import {
 	type ApprovalDecision,
+	type ApprovalRequest,
 	type CustomProviderInput,
 	type ImageAttachmentDto,
 	IPC,
+	type IpcAgentEvent,
 	type PermissionMode,
 	type ThinkingLevelDto,
 } from "../../shared/ipc.js";
-import { AgentManager } from "./manager.js";
 import { detectEnvProxy, loadProxyConfig, setProxyConfig } from "./proxy.js";
+import { SessionPool } from "./sessionPool.js";
 
-/** Wire the AgentManager to ipcMain and forward its events to the renderer window. */
-export function registerAgentBridge(getWindow: () => BrowserWindow | null, cwd: string, appDir: string): AgentManager {
-	// OS notification when work finishes or needs you — only when the window isn't already focused.
-	const notify = (title: string, body: string) => {
-		const win = getWindow();
-		if (win && !win.isFocused() && Notification.isSupported()) {
-			const n = new Notification({ title, body });
-			n.on("click", () => {
-				win.show();
-				win.focus();
-			});
-			n.show();
-		}
-	};
-	const manager = new AgentManager(
-		(e) => {
-			getWindow()?.webContents.send(IPC.event, e);
-			if (e.type === "agent_end" && !e.willRetry) notify("pi", "Response ready");
-		},
-		(req) => {
-			getWindow()?.webContents.send(IPC.approvalRequest, req);
-			notify("pi — approval needed", `Allow ${req.toolName}?`);
+/** Wire the SessionPool to ipcMain and forward each session's events to the renderer, tagged by sessionId. */
+export function registerAgentBridge(getWindow: () => BrowserWindow | null, cwd: string, appDir: string): SessionPool {
+	const pool = new SessionPool(
+		{
+			forward: (sessionId: string, event: IpcAgentEvent) => {
+				getWindow()?.webContents.send(IPC.event, { sessionId, event });
+			},
+			forwardApproval: (sessionId: string, request: ApprovalRequest) => {
+				getWindow()?.webContents.send(IPC.approvalRequest, { sessionId, request });
+			},
+			// A background (non-focused) session finished or needs approval — surface it via the OS.
+			notify: (_sessionId: string, kind: "done" | "approval", title: string) => {
+				const win = getWindow();
+				if (!Notification.isSupported()) return;
+				const n = new Notification({
+					title: kind === "approval" ? "pi — approval needed" : "pi",
+					body: kind === "approval" ? `${title} needs approval` : `${title} — response ready`,
+				});
+				n.on("click", () => {
+					win?.show();
+					win?.focus();
+				});
+				n.show();
+			},
 		},
 		cwd,
 		appDir,
 	);
-	void manager.init();
+	void pool.init();
 
-	ipcMain.on(IPC.approvalResolve, (_e, id: string, decision: ApprovalDecision) =>
-		manager.resolveApproval(id, decision),
+	ipcMain.on(IPC.approvalResolve, (_e, sessionId: string, id: string, decision: ApprovalDecision) =>
+		pool.resolveApproval(sessionId, id, decision),
 	);
 
-	ipcMain.handle(IPC.send, (_e, text: string, images?: ImageAttachmentDto[]) => manager.prompt(text, images));
-	ipcMain.handle(IPC.getStats, () => manager.getStats());
-	ipcMain.handle(IPC.newChatInCwd, (_e, dir: string) => manager.setCwd(dir));
-	ipcMain.handle(IPC.abort, () => manager.abort());
-	ipcMain.handle(IPC.editLastMessage, () => manager.editLastMessage());
-	ipcMain.handle(IPC.newSession, () => manager.newSession());
-	ipcMain.handle(IPC.setModel, (_e, provider: string, id: string) => manager.setModel(provider, id));
-	ipcMain.handle(IPC.setThinking, (_e, level: ThinkingLevelDto) => manager.setThinking(level));
-	ipcMain.handle(IPC.setApiKey, (_e, provider: string, key: string) => manager.setApiKey(provider, key));
-	ipcMain.handle(IPC.removeApiKey, (_e, provider: string) => manager.removeApiKey(provider));
-	ipcMain.handle(IPC.setMode, (_e, mode: PermissionMode) => manager.setMode(mode));
-	ipcMain.handle(IPC.setShowThinking, (_e, show: boolean) => manager.setShowThinking(show));
-	ipcMain.handle(IPC.hasApiKey, (_e, provider: string) => manager.hasApiKey(provider));
-	ipcMain.handle(IPC.listModels, () => manager.listModels());
-	ipcMain.handle(IPC.listProviders, () => manager.listProviders());
-	ipcMain.handle(IPC.addCustomProvider, (_e, config: CustomProviderInput) => manager.addCustomProvider(config));
-	ipcMain.handle(IPC.listSessions, () => manager.listSessions());
-	ipcMain.handle(IPC.switchSession, (_e, path: string) => manager.switchSession(path));
-	ipcMain.handle(IPC.deleteSession, (_e, path: string) => manager.deleteSession(path));
-	ipcMain.handle(IPC.getTranscript, () => manager.getTranscript());
-	ipcMain.handle(IPC.getState, () => manager.getState());
-	ipcMain.handle(IPC.listCommands, () => manager.listCommands());
-	ipcMain.handle(IPC.compact, () => manager.compact());
+	// session-scoped
+	ipcMain.handle(IPC.send, (_e, sessionId: string, text: string, images?: ImageAttachmentDto[]) =>
+		pool.prompt(sessionId, text, images),
+	);
+	ipcMain.handle(IPC.abort, (_e, sessionId: string) => pool.abort(sessionId));
+	ipcMain.handle(IPC.getStats, (_e, sessionId: string) => pool.getStats(sessionId));
+	ipcMain.handle(IPC.getTranscript, (_e, sessionId: string) => pool.getTranscript(sessionId));
+	ipcMain.handle(IPC.setModel, (_e, sessionId: string, provider: string, id: string) =>
+		pool.setModel(sessionId, provider, id),
+	);
+	ipcMain.handle(IPC.setThinking, (_e, sessionId: string, level: ThinkingLevelDto) =>
+		pool.setThinking(sessionId, level),
+	);
+	ipcMain.handle(IPC.compact, (_e, sessionId: string) => pool.compact(sessionId));
+	ipcMain.handle(IPC.listCommands, (_e, sessionId: string) => pool.listCommands(sessionId));
+	ipcMain.handle(IPC.editLastMessage, (_e, sessionId: string) => pool.editLastMessage(sessionId));
+
+	// lifecycle
+	ipcMain.handle(IPC.openSession, (_e, path: string) => pool.openSession(path));
+	ipcMain.handle(IPC.newChatInCwd, (_e, dir: string) => pool.newChatInCwd(dir));
+	ipcMain.handle(IPC.closeSession, (_e, sessionId: string) => pool.closeSession(sessionId));
+	ipcMain.handle(IPC.deleteSession, (_e, sessionId: string) => pool.deleteSession(sessionId));
+	ipcMain.handle(IPC.deleteSessionFile, (_e, path: string) => pool.deleteSessionByPath(path));
+	ipcMain.handle(IPC.setActive, (_e, sessionId: string | null) => {
+		pool.setActive(sessionId);
+	});
+
+	// app-global
+	ipcMain.handle(IPC.setApiKey, (_e, provider: string, key: string) => pool.setApiKey(provider, key));
+	ipcMain.handle(IPC.removeApiKey, (_e, provider: string) => {
+		pool.removeApiKey(provider);
+	});
+	ipcMain.handle(IPC.setMode, (_e, mode: PermissionMode) => {
+		pool.setMode(mode);
+	});
+	ipcMain.handle(IPC.setShowThinking, (_e, show: boolean) => {
+		pool.setShowThinking(show);
+	});
+	ipcMain.handle(IPC.hasApiKey, (_e, provider: string) => pool.hasApiKey(provider));
+	ipcMain.handle(IPC.listModels, () => pool.listModels());
+	ipcMain.handle(IPC.listProviders, () => pool.listProviders());
+	ipcMain.handle(IPC.addCustomProvider, (_e, config: CustomProviderInput) => pool.addCustomProvider(config));
+	ipcMain.handle(IPC.listSessions, () => pool.listSessions());
+	ipcMain.handle(IPC.getState, () => pool.getState());
 	ipcMain.handle(IPC.getProxyConfig, () => ({ ...loadProxyConfig(), envProxy: detectEnvProxy() }));
 	ipcMain.handle(IPC.setProxyConfig, (_e, cfg: { enabled: boolean; url: string }) => {
 		setProxyConfig(cfg);
@@ -74,11 +99,8 @@ export function registerAgentBridge(getWindow: () => BrowserWindow | null, cwd: 
 		const result = win
 			? await dialog.showOpenDialog(win, { properties: ["openDirectory"] })
 			: await dialog.showOpenDialog({ properties: ["openDirectory"] });
-		const dir = result.canceled ? undefined : result.filePaths[0];
-		if (!dir) return null;
-		await manager.setCwd(dir);
-		return dir;
+		return result.canceled ? null : (result.filePaths[0] ?? null);
 	});
 
-	return manager;
+	return pool;
 }

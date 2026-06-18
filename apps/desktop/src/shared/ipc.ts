@@ -9,13 +9,24 @@ export const IPC = {
 	windowClose: "window:close",
 	windowIsMaximized: "window:isMaximized",
 	windowMaximizeChanged: "window:maximizeChanged",
-	// agent control (renderer -> main, invoke/handle)
+	// session-scoped agent control (renderer -> main): each takes a sessionId as its first argument
 	send: "pi:send",
 	abort: "pi:abort",
 	editLastMessage: "pi:editLastMessage",
-	newSession: "pi:newSession",
 	setModel: "pi:setModel",
 	setThinking: "pi:setThinking",
+	getTranscript: "pi:getTranscript",
+	getStats: "pi:getStats",
+	listCommands: "pi:listCommands",
+	compact: "pi:compact",
+	// session lifecycle (renderer -> main)
+	openSession: "pi:openSession", // ensure a live controller for an on-disk path -> returns sessionId
+	newChatInCwd: "pi:newChatInCwd", // create a fresh live session in a cwd -> returns sessionId
+	closeSession: "pi:closeSession", // park/dispose a live session without deleting its file
+	deleteSession: "pi:deleteSession", // abort + dispose a live session + remove its file
+	deleteSessionFile: "pi:deleteSessionFile", // remove an on-disk session by path (dispose it first if live)
+	setActive: "pi:setActive", // tell main which session is focused (drives notification suppression)
+	// app-global control (no sessionId)
 	chooseCwd: "pi:chooseCwd",
 	setApiKey: "pi:setApiKey",
 	removeApiKey: "pi:removeApiKey",
@@ -26,19 +37,12 @@ export const IPC = {
 	listProviders: "pi:listProviders",
 	addCustomProvider: "pi:addCustomProvider",
 	listSessions: "pi:listSessions",
-	switchSession: "pi:switchSession",
-	deleteSession: "pi:deleteSession",
-	getTranscript: "pi:getTranscript",
 	getState: "pi:getState",
-	listCommands: "pi:listCommands",
-	compact: "pi:compact",
 	getProxyConfig: "pi:getProxyConfig",
 	setProxyConfig: "pi:setProxyConfig",
-	getStats: "pi:getStats",
-	newChatInCwd: "pi:newChatInCwd",
-	// agent stream (main -> renderer, send)
+	// agent stream (main -> renderer, send) — payload is { sessionId, event }
 	event: "pi:event",
-	// approvals
+	// approvals — request payload is { sessionId, request }; resolve takes (sessionId, id, decision)
 	approvalRequest: "pi:approval:request",
 	approvalResolve: "pi:approval:resolve",
 } as const;
@@ -161,6 +165,19 @@ export interface ApprovalRequest {
 	input: unknown;
 }
 
+/** Every agent event crosses IPC tagged with the session it came from, so the renderer can route it to the
+ * right per-session slice even when that session isn't the focused one. */
+export interface WrappedAgentEvent {
+	sessionId: string;
+	event: IpcAgentEvent;
+}
+
+/** A tool-approval request tagged with its originating session (it may be a background session). */
+export interface WrappedApprovalRequest {
+	sessionId: string;
+	request: ApprovalRequest;
+}
+
 /**
  * A slash command offered in the composer's "/" menu.
  * - builtin: a desktop UI action (settings/model/new/resume/compact/copy/quit), run client-side.
@@ -184,6 +201,9 @@ export interface SessionInfoDto {
 	cwd: string;
 	/** Short project label (basename of cwd) for cross-project listing. */
 	project: string;
+	/** Set when this on-disk (or just-sent, not-yet-persisted) session is currently a live controller, so the
+	 * renderer can act on it by id (setActive) and overlay its running/approval badges. */
+	sessionId?: string;
 }
 
 export interface ToolSnapshotDto {
@@ -211,39 +231,71 @@ export interface ProxyConfigDto {
 	envProxy: string;
 }
 
-export interface AppStateDto {
+/**
+ * A live (in-memory) session in the pool. The renderer keys everything by `sessionId` (NOT by file path,
+ * which is late-bound — pi writes the JSONL only on the first message_end). Per-session model/thinking/cwd
+ * travel here so the composer can reflect the active session; `running`/`hasPendingApproval` drive sidebar
+ * badges; `parked` marks a controller whose AgentSession was evicted under the cap but is resumable.
+ */
+export interface SessionSummaryDto {
+	sessionId: string;
+	title: string;
 	cwd: string;
-	/** The app's own directory (Electron userData) — the "no specific project" home for general chats. */
-	appDir: string;
+	project: string;
+	running: boolean;
+	hasPendingApproval: boolean;
+	parked: boolean;
+	sessionFile?: string;
 	model?: ModelInfoDto;
 	thinkingLevel: ThinkingLevelDto;
+}
+
+export interface AppStateDto {
+	/** The app's own directory (Electron userData) — the "no specific project" home for general chats. */
+	appDir: string;
 	mode: PermissionMode;
 	/** Show assistant thinking blocks (mapped to pi's hideThinkingBlock setting, shared with the CLI). */
 	showThinking: boolean;
 	/** True when at least one model is usable (any provider). Drives whether the setup gate shows. */
 	hasModel: boolean;
-	isStreaming: boolean;
-	/** Path of the active saved session (undefined for a fresh, not-yet-persisted chat). */
-	sessionFile?: string;
+	/** The live sessions in the pool (running/idle/parked) and which one is focused. */
+	sessions: SessionSummaryDto[];
+	activeId?: string;
 }
 
 export interface PiApi {
-	// agent control
-	send(text: string, images?: ImageAttachmentDto[]): Promise<void>;
-	getStats(): Promise<UsageDto>;
-	/** Start a fresh chat in a specific directory (a project's cwd, or the app dir for a general chat). */
-	newChatInCwd(cwd: string): Promise<void>;
-	abort(): Promise<void>;
+	// ---- session-scoped agent control (all take a sessionId) ----
+	send(sessionId: string, text: string, images?: ImageAttachmentDto[]): Promise<void>;
+	abort(sessionId: string): Promise<void>;
+	getStats(sessionId: string): Promise<UsageDto>;
+	getTranscript(sessionId: string): Promise<TranscriptDto>;
+	setModel(sessionId: string, provider: string, id: string): Promise<void>;
+	setThinking(sessionId: string, level: ThinkingLevelDto): Promise<void>;
+	compact(sessionId: string): Promise<void>;
+	/** Dynamic slash commands (prompt templates + skill commands) for this session's cwd. */
+	listCommands(sessionId: string): Promise<CommandDto[]>;
 	/**
-	 * Rewind the session to before the last user message (in-place, same session file) and return that
-	 * message's original text so the composer can be refilled for editing. Returns null when there is no
-	 * editable last user message or a turn is in flight. After this resolves the caller must re-fetch the
-	 * transcript (the thread truncates) — navigateTree emits no message events.
+	 * Rewind this session to before its last user message (in-place, same file) and return that message's
+	 * original text. Returns null when there's no editable last user message or a turn is in flight. The
+	 * caller must re-fetch the transcript afterward (the thread truncates; navigateTree emits no events).
 	 */
-	editLastMessage(): Promise<string | null>;
-	newSession(): Promise<void>;
-	setModel(provider: string, id: string): Promise<void>;
-	setThinking(level: ThinkingLevelDto): Promise<void>;
+	editLastMessage(sessionId: string): Promise<string | null>;
+
+	// ---- session lifecycle ----
+	/** Ensure a live controller for an on-disk session path; returns its (existing or new) sessionId. */
+	openSession(path: string): Promise<string>;
+	/** Start a fresh live chat in a directory (a project's cwd, or the app dir for a general chat). */
+	newChatInCwd(cwd: string): Promise<string>;
+	/** Park/dispose a live session without deleting its file (resumable from JSONL). */
+	closeSession(sessionId: string): Promise<void>;
+	/** Abort + dispose + remove the session file. */
+	deleteSession(sessionId: string): Promise<void>;
+	/** Remove an on-disk session by path (used for history rows that aren't currently live). */
+	deleteSessionFile(path: string): Promise<void>;
+	/** Tell main which session the user is viewing (suppresses its own notifications, drives LRU). */
+	setActive(sessionId: string | null): Promise<void>;
+
+	// ---- app-global ----
 	chooseCwd(): Promise<string | null>;
 	setApiKey(provider: string, key: string): Promise<boolean>;
 	removeApiKey(provider: string): Promise<void>;
@@ -254,22 +306,18 @@ export interface PiApi {
 	listProviders(): Promise<ProviderInfoDto[]>;
 	addCustomProvider(config: CustomProviderInput): Promise<boolean>;
 	listSessions(): Promise<SessionInfoDto[]>;
-	switchSession(path: string): Promise<void>;
-	deleteSession(path: string): Promise<void>;
-	getTranscript(): Promise<TranscriptDto>;
 	getState(): Promise<AppStateDto>;
-	/** Dynamic slash commands (prompt templates + skill commands) discovered from ~/.pi + the project. */
-	listCommands(): Promise<CommandDto[]>;
-	compact(): Promise<void>;
 	/** Read the saved outbound-proxy config plus the detected env proxy (for pre-filling the field). */
 	getProxyConfig(): Promise<ProxyConfigDto>;
 	/** Persist + apply the outbound-proxy config; takes effect on the next message. */
 	setProxyConfig(cfg: { enabled: boolean; url: string }): Promise<void>;
-	// streams
-	onEvent(cb: (e: IpcAgentEvent) => void): () => void;
-	onApproval(cb: (r: ApprovalRequest) => void): () => void;
-	resolveApproval(id: string, decision: ApprovalDecision): void;
-	// window
+
+	// ---- streams (main -> renderer), each tagged with its sessionId ----
+	onEvent(cb: (e: WrappedAgentEvent) => void): () => void;
+	onApproval(cb: (r: WrappedApprovalRequest) => void): () => void;
+	resolveApproval(sessionId: string, id: string, decision: ApprovalDecision): void;
+
+	// ---- window ----
 	window: {
 		minimize(): void;
 		toggleMaximize(): void;

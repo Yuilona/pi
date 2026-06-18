@@ -10,10 +10,10 @@ import type {
 	ModelInfoDto,
 	PermissionMode,
 	SessionInfoDto,
-	ThinkingLevelDto,
+	SessionSummaryDto,
 	UsageDto,
 } from "@shared/ipc";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiKeyGate } from "@/components/ApiKeyGate";
 import { ApprovalDialog } from "@/components/ApprovalDialog";
 import { Composer } from "@/components/Composer";
@@ -25,10 +25,17 @@ import { SettingsPanel } from "@/components/SettingsPanel";
 import { StatusBanners } from "@/components/StatusBanners";
 import { Titlebar } from "@/components/Titlebar";
 import { ImageViewerContext } from "@/state/imageViewer";
-import { useAgent } from "@/state/useAgent";
+import { useSessions } from "@/state/useSessions";
 import { ViewContext } from "@/state/viewPrefs";
 
 type Theme = "light" | "dark";
+
+/** Per-session badges the sidebar overlays on each row, keyed by sessionId. */
+export interface LiveInfo {
+	running: boolean;
+	unread: boolean;
+	pendingApproval: boolean;
+}
 
 const MODE_ORDER: PermissionMode[] = ["ask", "acceptEdits", "yolo", "readonly"];
 
@@ -50,23 +57,32 @@ function prettyCwd(p: string): string {
 }
 
 export function App() {
-	const { state, send, abort, reset, loadTranscript } = useAgent();
+	const {
+		slices,
+		unread,
+		activeId,
+		activeState: state,
+		setActive,
+		openSession: openLive,
+		newChatInCwd: newLive,
+		send,
+		abort,
+		loadTranscript,
+		removeSlice,
+	} = useSessions();
 	const [theme, setTheme] = useState<Theme>("light");
 	const [ready, setReady] = useState<boolean | null>(null);
-	const [cwdLabel, setCwdLabel] = useState("~");
-	const [model, setModel] = useState<ModelInfoDto | undefined>();
-	const [thinking, setThinking] = useState<ThinkingLevelDto>("medium");
+	const [appDir, setAppDir] = useState("");
 	const [mode, setMode] = useState<PermissionMode>("ask");
+	const [showThinking, setShowThinking] = useState(true);
+	const [liveSessions, setLiveSessions] = useState<SessionSummaryDto[]>([]);
 	const [input, setInput] = useState("");
 	const [settingsOpen, setSettingsOpen] = useState(false);
-	const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
+	// Per-session approval queues: a background session's gate must not block the active view.
+	const [approvals, setApprovals] = useState<Record<string, ApprovalRequest[]>>({});
 	const [sidebarOpen, setSidebarOpen] = useState(true);
 	const [sessions, setSessions] = useState<SessionInfoDto[]>([]);
 	const [retitledPath, setRetitledPath] = useState<string | undefined>();
-	const [currentCwd, setCurrentCwd] = useState("");
-	const [appDir, setAppDir] = useState("");
-	const [sessionFile, setSessionFile] = useState<string | undefined>();
-	const [showThinking, setShowThinking] = useState(true);
 	const [expandTools, setExpandTools] = useState(() => localStorage.getItem("pi.expandTools") === "1");
 	const [commands, setCommands] = useState<CommandDto[]>(BUILTIN_COMMANDS);
 	const [attachments, setAttachments] = useState<ImageAttachmentDto[]>([]);
@@ -74,32 +90,50 @@ export function App() {
 	const [models, setModels] = useState<ModelInfoDto[]>([]);
 	const [viewerSrc, setViewerSrc] = useState<string | null>(null);
 
+	const activeIdRef = useRef<string | undefined>(undefined);
+	activeIdRef.current = activeId;
+
+	const activeSummary = activeId ? liveSessions.find((s) => s.sessionId === activeId) : undefined;
+	const model = activeSummary?.model;
+	const thinking = activeSummary?.thinkingLevel ?? "medium";
+	const currentCwd = activeSummary?.cwd ?? appDir;
+	const cwdLabel = prettyCwd(currentCwd);
+
 	useEffect(() => {
 		document.documentElement.dataset.theme = theme;
 	}, [theme]);
 
-	useEffect(() => window.pi.onApproval((req) => setApprovals((q) => [...q, req])), []);
+	useEffect(
+		() =>
+			window.pi.onApproval(({ sessionId, request }) => {
+				setApprovals((q) => ({ ...q, [sessionId]: [...(q[sessionId] ?? []), request] }));
+			}),
+		[],
+	);
 
+	// The active session's first pending approval is shown inline; background ones wait (sidebar badge).
+	const activeApproval = activeId ? approvals[activeId]?.[0] : undefined;
 	const resolveApproval = useCallback((decision: ApprovalDecision) => {
+		const id = activeIdRef.current;
+		if (!id) return;
 		setApprovals((q) => {
-			const [first, ...rest] = q;
-			if (first) window.pi.resolveApproval(first.id, decision);
-			return rest;
+			const queue = q[id] ?? [];
+			const [first, ...rest] = queue;
+			if (first) window.pi.resolveApproval(id, first.id, decision);
+			return { ...q, [id]: rest };
 		});
 	}, []);
 
 	const refreshState = useCallback(async () => {
 		const s = await window.pi.getState();
 		setReady(s.hasModel);
-		setCwdLabel(prettyCwd(s.cwd));
-		setCurrentCwd(s.cwd);
 		setAppDir(s.appDir);
-		setModel(s.model);
-		setThinking(s.thinkingLevel);
 		setMode(s.mode);
-		setSessionFile(s.sessionFile);
 		setShowThinking(s.showThinking);
-	}, []);
+		setLiveSessions(s.sessions);
+		// Adopt main's initial session on first load (the pool creates one at startup).
+		if (!activeIdRef.current && s.activeId) void setActive(s.activeId);
+	}, [setActive]);
 
 	const applyShowThinking = useCallback((b: boolean) => {
 		setShowThinking(b);
@@ -116,12 +150,14 @@ export function App() {
 	}, []);
 
 	const refreshCommands = useCallback(async () => {
-		const dynamic = await window.pi.listCommands();
+		const id = activeIdRef.current;
+		const dynamic = id ? await window.pi.listCommands(id) : [];
 		setCommands([...BUILTIN_COMMANDS, ...dynamic]);
 	}, []);
 
 	const refreshStats = useCallback(async () => {
-		setUsage(await window.pi.getStats());
+		const id = activeIdRef.current;
+		setUsage(id ? await window.pi.getStats(id) : undefined);
 	}, []);
 
 	const refreshModels = useCallback(async () => {
@@ -131,49 +167,60 @@ export function App() {
 
 	const pickModel = useCallback(
 		async (provider: string, id: string) => {
-			await window.pi.setModel(provider, id);
+			const sid = activeIdRef.current;
+			if (sid) await window.pi.setModel(sid, provider, id);
 			await refreshState();
 		},
 		[refreshState],
 	);
 
 	const openSession = useCallback(
-		async (path: string) => {
+		async (path: string, sessionId?: string) => {
 			setAttachments([]);
-			await window.pi.switchSession(path);
-			await loadTranscript();
+			if (sessionId) await setActive(sessionId);
+			else await openLive(path);
 			await refreshState();
 			await refreshSessions();
 		},
-		[loadTranscript, refreshState, refreshSessions],
+		[setActive, openLive, refreshState, refreshSessions],
 	);
 
 	// Start a fresh chat in a given directory: a project's cwd (per-project "+"), or the app dir for a
-	// general, no-project chat (the "Chats"/titlebar "+", Codex-style). Empty falls back to current cwd.
+	// general, no-project chat (the titlebar "+"). Empty falls back to the app dir.
 	const newChatInCwd = useCallback(
 		async (cwd: string) => {
 			setAttachments([]);
-			if (cwd) await window.pi.newChatInCwd(cwd);
-			else await reset();
-			await loadTranscript();
+			await newLive(cwd || appDir);
 			await refreshState();
 			await refreshSessions();
 		},
-		[reset, loadTranscript, refreshState, refreshSessions],
+		[newLive, appDir, refreshState, refreshSessions],
 	);
 	const newChat = useCallback(() => newChatInCwd(appDir), [newChatInCwd, appDir]);
 
 	const deleteSession = useCallback(
-		async (path: string) => {
-			const wasActive = path === sessionFile;
-			await window.pi.deleteSession(path);
-			if (wasActive) {
-				await loadTranscript();
-				await refreshState();
+		async (row: SessionInfoDto) => {
+			if (row.sessionId) {
+				const id = row.sessionId;
+				await window.pi.deleteSession(id);
+				removeSlice(id);
+				setApprovals((q) => {
+					if (!q[id]) return q;
+					const n = { ...q };
+					delete n[id];
+					return n;
+				});
+			} else {
+				await window.pi.deleteSessionFile(row.path);
 			}
+			// If we deleted the active session, adopt main's fallback (refreshState re-adopts on null active).
+			if (row.sessionId && row.sessionId === activeIdRef.current) {
+				await setActive(undefined);
+			}
+			await refreshState();
 			await refreshSessions();
 		},
-		[sessionFile, loadTranscript, refreshState, refreshSessions],
+		[removeSlice, setActive, refreshState, refreshSessions],
 	);
 
 	// Builtin "/" commands map to desktop actions; prompt/skill commands are sent as text (the SDK expands them).
@@ -192,9 +239,11 @@ export function App() {
 				case "resume":
 					setSidebarOpen(true);
 					break;
-				case "compact":
-					void window.pi.compact();
+				case "compact": {
+					const id = activeIdRef.current;
+					if (id) void window.pi.compact(id);
 					break;
+				}
 				case "copy": {
 					const reply = [...state.messages].reverse().find((m) => m.role === "assistant");
 					const text = reply
@@ -227,10 +276,7 @@ export function App() {
 		});
 	}, []);
 
-	// Cycle the permission mode with Shift+Tab from anywhere in the chat view — not only when the composer
-	// textarea is focused (clicking the model pill / sidebar / "+" moves focus off it). Skipped while
-	// Settings is open so its form fields keep normal Tab navigation, and when the composer textarea is
-	// focused (it handles Shift+Tab itself) to avoid cycling twice.
+	// Cycle the permission mode with Shift+Tab from anywhere in the chat view (not only the composer).
 	useEffect(() => {
 		const onKey = (e: globalThis.KeyboardEvent) => {
 			if (e.key !== "Tab" || !e.shiftKey || settingsOpen) return;
@@ -246,42 +292,43 @@ export function App() {
 		void refreshState();
 	}, [refreshState]);
 
-	// Refresh the session list when the sidebar is open and whenever a turn finishes (new/updated titles).
-	// biome-ignore lint/correctness/useExhaustiveDependencies: state.streaming intentionally re-triggers the refresh
+	// Refresh the live-session list + history whenever any slice's streaming flips (a turn started/ended in
+	// some session) or the active session changes — keeps the sidebar badges and history current.
+	const anyStreaming = Object.values(slices).some((s) => s.streaming);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: anyStreaming/activeId intentionally re-trigger
+	useEffect(() => {
+		if (ready === true) void refreshState();
+	}, [ready, anyStreaming, activeId, refreshState]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: anyStreaming intentionally re-triggers the refresh
 	useEffect(() => {
 		if (ready === true && sidebarOpen) void refreshSessions();
-	}, [ready, sidebarOpen, state.streaming, refreshSessions]);
+	}, [ready, sidebarOpen, anyStreaming, refreshSessions]);
 
-	// Auto-title: when the agent names a brand-new chat, refresh the list and flag that row so it plays the
-	// reveal sweep. Separate onEvent subscription; the chat reducer ignores this event type.
+	// Auto-title: when the agent names a brand-new chat, refresh the list and flag that row for the sweep.
 	useEffect(() => {
-		return window.pi.onEvent((e) => {
-			if (e.type !== "session_renamed") return;
+		return window.pi.onEvent(({ event }) => {
+			if (event.type !== "session_renamed") return;
 			void refreshSessions();
-			setRetitledPath(e.path);
-			// Hold the `retitled` class long enough for the full 2.5s CSS sweep to finish (a shorter timer cut
-			// the light sweep off mid-stroke). Path-matched so a later retitle's highlight isn't cleared early.
-			setTimeout(() => setRetitledPath((p) => (p === e.path ? undefined : p)), 2600);
+			void refreshState();
+			setRetitledPath(event.path);
+			setTimeout(() => setRetitledPath((p) => (p === event.path ? undefined : p)), 2600);
 		});
-	}, [refreshSessions]);
+	}, [refreshSessions, refreshState]);
 
-	// Slash commands (prompt templates + skills) are project-scoped, so refresh them when the cwd changes.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: currentCwd intentionally re-triggers the refresh
+	// Slash commands + models are project-scoped — refresh when the active session (its cwd) changes.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: currentCwd/activeId intentionally re-trigger
 	useEffect(() => {
-		if (ready === true) void refreshCommands();
-	}, [ready, currentCwd, refreshCommands]);
+		if (ready === true) {
+			void refreshCommands();
+			void refreshModels();
+		}
+	}, [ready, currentCwd, activeId, refreshCommands, refreshModels]);
 
-	// Ready models for the composer's quick model switcher (project-scoped credentials may change with cwd).
-	// biome-ignore lint/correctness/useExhaustiveDependencies: currentCwd intentionally re-triggers the refresh
-	useEffect(() => {
-		if (ready === true) void refreshModels();
-	}, [ready, currentCwd, refreshModels]);
-
-	// Token-usage readout: refresh when a turn ends (streaming flips) and when the active session changes.
+	// Token-usage readout: refresh when a turn ends (active streaming flips) and when the active session changes.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: state.streaming intentionally re-triggers the refresh
 	useEffect(() => {
 		if (ready === true) void refreshStats();
-	}, [ready, state.streaming, sessionFile, refreshStats]);
+	}, [ready, state.streaming, activeId, refreshStats]);
 
 	const toggleTheme = useCallback(() => setTheme((t) => (t === "light" ? "dark" : "light")), []);
 
@@ -298,35 +345,41 @@ export function App() {
 		setAttachments([]);
 	}, [input, attachments, state.streaming, send, commands, runCommand]);
 
-	// Commit an in-place edit of the last user message: rewind the session to before it (same file) so the
-	// edited message and the reply that followed drop out, then resend the new text as a fresh turn from the
-	// rewound point. The editing UI lives in the bubble (UserBubble); this only fires on save. No-op while
-	// streaming or when the text is empty.
+	// Commit an in-place edit of the active session's last user message: rewind to before it (same file), then
+	// resend the new text as a fresh turn. No-op while streaming or when the text is empty.
 	const submitEdit = useCallback(
 		async (text: string) => {
+			const id = activeIdRef.current;
 			const trimmed = text.trim();
-			if (!trimmed || state.streaming) return;
-			const original = await window.pi.editLastMessage();
+			if (!id || !trimmed || state.streaming) return;
+			const original = await window.pi.editLastMessage(id);
 			if (original == null) return;
-			await loadTranscript(); // the edited message + its reply drop out of the thread
-			send(trimmed); // resend the edited text → a new turn continues from here
+			await loadTranscript(id);
+			send(trimmed);
 		},
 		[state.streaming, loadTranscript, send],
 	);
 
 	const chooseCwd = useCallback(async () => {
 		const dir = await window.pi.chooseCwd();
-		if (dir) {
-			setCwdLabel(prettyCwd(dir));
-			await reset();
-			await refreshState();
-			await refreshSessions();
-		}
-	}, [reset, refreshState, refreshSessions]);
+		if (dir) await newChatInCwd(dir);
+	}, [newChatInCwd]);
 
 	const hasMessages = state.messages.length > 0;
-	// Stable context value: a new object each render would re-render every ViewContext consumer
-	// (ThinkingBlock, MessageList) on every streaming tick.
+
+	// Per-session badge info for the sidebar (running from the live slice, unread/approval from state).
+	const liveInfo = useMemo(() => {
+		const out: Record<string, LiveInfo> = {};
+		for (const s of liveSessions) {
+			out[s.sessionId] = {
+				running: slices[s.sessionId]?.streaming ?? s.running,
+				unread: !!unread[s.sessionId],
+				pendingApproval: s.hasPendingApproval || (approvals[s.sessionId]?.length ?? 0) > 0,
+			};
+		}
+		return out;
+	}, [liveSessions, slices, unread, approvals]);
+
 	const viewValue = useMemo(
 		() => ({ showThinking, expandTools, setShowThinking: applyShowThinking, setExpandTools: applyExpandTools }),
 		[showThinking, expandTools, applyShowThinking, applyExpandTools],
@@ -348,13 +401,14 @@ export function App() {
 					{ready === true && sidebarOpen && (
 						<SessionSidebar
 							sessions={sessions}
-							activePath={sessionFile}
+							activeId={activeId}
+							liveInfo={liveInfo}
 							retitledPath={retitledPath}
 							currentCwd={currentCwd}
-							onSelect={(p) => void openSession(p)}
+							onSelect={(row) => void openSession(row.path, row.sessionId)}
 							onNew={() => void newChat()}
 							onNewInProject={(p) => void newChatInCwd(p)}
-							onDelete={(p) => void deleteSession(p)}
+							onDelete={(row) => void deleteSession(row)}
 						/>
 					)}
 					<main className="main">
@@ -416,11 +470,16 @@ export function App() {
 							mode={mode}
 							onSetMode={applyMode}
 							currentModel={model ? { provider: model.provider, id: model.id } : undefined}
+							onPickModel={pickModel}
+							onPickThinking={(level) => {
+								const id = activeIdRef.current;
+								if (id) void window.pi.setThinking(id, level);
+							}}
 							onChanged={refreshState}
 						/>
 					)}
 
-					{approvals[0] && <ApprovalDialog request={approvals[0]} onResolve={resolveApproval} />}
+					{activeApproval && <ApprovalDialog request={activeApproval} onResolve={resolveApproval} />}
 					{viewerSrc && <ImageViewer src={viewerSrc} onClose={() => setViewerSrc(null)} />}
 				</div>
 			</ImageViewerContext.Provider>

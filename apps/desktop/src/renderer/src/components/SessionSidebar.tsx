@@ -6,6 +6,13 @@ import { IconFolder, IconPlus, IconTrash } from "@/components/icons";
 /** How many of a project's most-recent chats stay pinned; the rest fold under "show more". */
 const PINNED = 4;
 
+/** Per-session live badges, keyed by sessionId (running spinner / unread dot / pending-approval marker). */
+export interface SessionLiveInfo {
+	running: boolean;
+	unread: boolean;
+	pendingApproval: boolean;
+}
+
 function relTime(ms: number): string {
 	const diff = Date.now() - ms;
 	const m = Math.floor(diff / 60000);
@@ -26,19 +33,23 @@ interface SessionGroup {
 
 interface SessionSidebarProps {
 	sessions: SessionInfoDto[];
-	activePath?: string;
+	/** Focused session id (renderer-driven). A row is active when its live sessionId matches. */
+	activeId?: string;
+	/** Live badges keyed by sessionId. */
+	liveInfo: Record<string, SessionLiveInfo>;
 	/** Path of a session that was just auto-titled; that row plays a one-time reveal sweep. */
 	retitledPath?: string;
 	currentCwd: string;
-	onSelect: (path: string) => void;
+	onSelect: (row: SessionInfoDto) => void;
 	onNew: () => void;
 	onNewInProject: (cwd: string) => void;
-	onDelete: (path: string) => void;
+	onDelete: (row: SessionInfoDto) => void;
 }
 
 export function SessionSidebar({
 	sessions,
-	activePath,
+	activeId,
+	liveInfo,
 	retitledPath,
 	currentCwd,
 	onSelect,
@@ -58,9 +69,6 @@ export function SessionSidebar({
 		}
 		for (const g of map.values()) g.sessions.sort((a, b) => b.modified - a.modified);
 
-		// Projects already shown keep their position; only brand-new projects are slotted in (at top, by
-		// latest activity). A project drops out only when its last chat is deleted. Switching projects,
-		// sending messages, or deleting a chat therefore never reorders the existing groups.
 		const present = new Set(map.keys());
 		const kept = orderRef.current.filter((cwd) => present.has(cwd));
 		const keptSet = new Set(kept);
@@ -98,7 +106,8 @@ export function SessionSidebar({
 						key={g.cwd}
 						group={g}
 						isCurrent={g.cwd === currentCwd}
-						activePath={activePath}
+						activeId={activeId}
+						liveInfo={liveInfo}
 						retitledPath={retitledPath}
 						onSelect={onSelect}
 						onNewInProject={onNewInProject}
@@ -113,7 +122,7 @@ export function SessionSidebar({
 					confirmLabel="Delete"
 					danger
 					onConfirm={() => {
-						onDelete(pendingDelete.path);
+						onDelete(pendingDelete);
 						setPendingDelete(null);
 					}}
 					onCancel={() => setPendingDelete(null)}
@@ -126,9 +135,10 @@ export function SessionSidebar({
 interface ProjectGroupProps {
 	group: SessionGroup;
 	isCurrent: boolean;
-	activePath?: string;
+	activeId?: string;
+	liveInfo: Record<string, SessionLiveInfo>;
 	retitledPath?: string;
-	onSelect: (path: string) => void;
+	onSelect: (row: SessionInfoDto) => void;
 	onNewInProject: (cwd: string) => void;
 	onRequestDelete: (s: SessionInfoDto) => void;
 }
@@ -136,7 +146,8 @@ interface ProjectGroupProps {
 function ProjectGroup({
 	group,
 	isCurrent,
-	activePath,
+	activeId,
+	liveInfo,
 	retitledPath,
 	onSelect,
 	onNewInProject,
@@ -175,30 +186,39 @@ function ProjectGroup({
 				</button>
 			</header>
 
-			{visible.map((s, i) => (
-				<div
-					key={s.path}
-					className={`sess-wrap ${s.path === activePath ? "active" : ""} ${s.path === retitledPath ? "retitled" : ""} ${
-						justExpanded && i >= PINNED ? "sess-reveal" : ""
-					}`}
-				>
-					<button type="button" className="sess" onClick={() => onSelect(s.path)}>
-						<div className="sess-title">{s.title}</div>
-						<div className="sess-meta">
-							{relTime(s.modified)} · {s.messageCount} msgs
-						</div>
-					</button>
-					<button
-						type="button"
-						className="icon-btn danger sess-del"
-						onClick={() => onRequestDelete(s)}
-						title="Delete chat"
-						aria-label="Delete chat"
+			{visible.map((s, i) => {
+				const info = s.sessionId ? liveInfo[s.sessionId] : undefined;
+				const active = !!s.sessionId && s.sessionId === activeId;
+				return (
+					<div
+						key={s.path}
+						className={`sess-wrap ${active ? "active" : ""} ${s.path === retitledPath ? "retitled" : ""} ${
+							justExpanded && i >= PINNED ? "sess-reveal" : ""
+						}`}
 					>
-						<IconTrash />
-					</button>
-				</div>
-			))}
+						<button type="button" className="sess" onClick={() => onSelect(s)}>
+							<div className="sess-title">
+								{info?.running && <span className="sess-spin" title="Running" />}
+								{!info?.running && info?.unread && <span className="sess-unread" title="New activity" />}
+								{info?.pendingApproval && <span className="sess-approval" title="Approval needed" />}
+								<span className="sess-title-text">{s.title}</span>
+							</div>
+							<div className="sess-meta">
+								{relTime(s.modified)} · {s.messageCount} msgs
+							</div>
+						</button>
+						<button
+							type="button"
+							className="icon-btn danger sess-del"
+							onClick={() => onRequestDelete(s)}
+							title="Delete chat"
+							aria-label="Delete chat"
+						>
+							<IconTrash />
+						</button>
+					</div>
+				);
+			})}
 
 			{overflow > 0 && (
 				<button type="button" className="sess-more" onClick={toggleMore}>
