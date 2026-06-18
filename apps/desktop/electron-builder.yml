@@ -1,0 +1,27 @@
+appId: works.earendil.pi-desktop
+productName: pi
+# electron-vite emits the app into out/; installers land in release/
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+# Bundle the app + its production node_modules into an asar archive. The pi SDK is externalized (kept in
+# node_modules) so child_process/fs/native modules resolve at runtime; electron-builder collects the
+# production dependencies (the @earendil-works/* packages + undici) and their transitive deps automatically.
+asar: true
+# Disable native-module rebuild: we have no native addons, and the pi packages ship prebuilt JS.
+npmRebuild: false
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: pi
