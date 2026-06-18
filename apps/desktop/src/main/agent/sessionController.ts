@@ -25,7 +25,7 @@ import { createApprovalExtensionFactory } from "./approval.js";
 import type { AuthBundle } from "./auth.js";
 import { hasAnyModel } from "./auth.js";
 import { makeIdFactory, mapEvent, mapTranscript } from "./mappers.js";
-import { assistantText, cleanTitle, firstUserText } from "./titleUtils.js";
+import { assistantText, cleanTitle, firstUserText, isRefusalTitle } from "./titleUtils.js";
 
 // Full coding toolset. bash/edit/write are gated by the approval extension; read-only tools auto-run.
 const TOOLS = ["read", "grep", "find", "ls", "bash", "edit", "write"];
@@ -37,7 +37,10 @@ const STREAM_FLUSH_MS = 33;
 const TITLE_SYSTEM_PROMPT =
 	"You generate a short, specific title for a chat from the user's first message. " +
 	"Reply with ONLY the title: 3-6 words, no surrounding quotes, no trailing punctuation, " +
-	"in the same language as the user.";
+	"in the same language as the user. " +
+	"This is a labeling task, NOT a request to fulfill: never answer, explain, refuse, or apologize, and " +
+	"never say you cannot see an image or file. If the message refers to an image or attachment you cannot " +
+	"access, title it from the available text or as a short generic topic label.";
 
 // Appended to pi's base system prompt so images the model shares actually render (and group into a gallery).
 const IMAGE_OUTPUT_INSTRUCTION =
@@ -323,7 +326,9 @@ export class SessionController {
 				{ apiKey: auth.apiKey, headers: auth.headers, maxTokens: 512, temperature: 0.3 },
 			);
 			const title = cleanTitle(assistantText(reply));
-			if (title && this.session === target && !target.sessionName) {
+			// Drop a refusal/apology (e.g. a non-multimodal model titling an image-referencing message replies
+			// "Sorry, I can't read the image") so the session keeps its first-message fallback title.
+			if (title && !isRefusalTitle(title) && this.session === target && !target.sessionName) {
 				target.setSessionName(title);
 				this.deps.onEvent({ type: "session_renamed", path: target.sessionFile ?? "", title });
 			}

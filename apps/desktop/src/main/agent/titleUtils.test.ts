@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { assistantText, cleanTitle, firstUserText } from "./titleUtils.js";
+import { assistantText, cleanTitle, firstUserText, isRefusalTitle } from "./titleUtils.js";
+
+describe("isRefusalTitle", () => {
+	it("flags apology/refusal replies (the bad auto-titles)", () => {
+		expect(isRefusalTitle("抱歉，我无法读取图片")).toBe(true);
+		expect(isRefusalTitle("对不起，我看不到这张图片")).toBe(true);
+		expect(isRefusalTitle("Sorry, I can't read the image")).toBe(true);
+		expect(isRefusalTitle("I'm unable to view images")).toBe(true);
+		expect(isRefusalTitle("Unable to access the file")).toBe(true);
+	});
+
+	it("does NOT flag legitimate titles that merely contain similar words", () => {
+		expect(isRefusalTitle("如何解决无法登录")).toBe(false);
+		expect(isRefusalTitle("图片渲染功能介绍")).toBe(false);
+		expect(isRefusalTitle("Refactor the image loader")).toBe(false);
+		expect(isRefusalTitle("Sortable table component")).toBe(false);
+	});
+});
 
 describe("cleanTitle", () => {
 	it("strips wrapping quotes and trailing punctuation, collapses whitespace", () => {
