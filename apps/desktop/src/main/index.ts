@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, ipcMain, session, shell } from "electron";
 import { IPC } from "../shared/ipc.js";
 import { registerAgentBridge } from "./agent/bridge.js";
 import { applyProxy, loadProxyConfig } from "./agent/proxy.js";
@@ -68,8 +68,9 @@ function createWindow(): BrowserWindow {
 		win.loadFile(join(import.meta.dirname, "../renderer/index.html"));
 	}
 
-	// Dev-only: capture a screenshot then quit (set PI_SHOT=<path>).
-	if (process.env.PI_SHOT) {
+	// Dev-only: capture a screenshot then quit (set PI_SHOT=<path>). Gated on !app.isPackaged so the
+	// arbitrary-JS / arbitrary-file-read capability is compiled out of any shipped production build.
+	if (!app.isPackaged && process.env.PI_SHOT) {
 		win.webContents.once("did-finish-load", () => {
 			setTimeout(async () => {
 				try {
@@ -116,6 +117,24 @@ function registerWindowControls(): void {
 }
 
 app.whenReady().then(() => {
+	// Defense-in-depth Content-Security-Policy (production only — the dev path runs the Vite dev
+	// server / HMR, which a strict CSP would break). connect-src 'self' is safe because pi runs in
+	// the main process: the renderer never calls the model API directly. img-src allows the markdown
+	// image gallery; style 'unsafe-inline' + font data: keep KaTeX/inline styles working.
+	if (!isDev) {
+		session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+			callback({
+				responseHeaders: {
+					...details.responseHeaders,
+					"Content-Security-Policy": [
+						"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+							"img-src 'self' https: data: blob:; font-src 'self' data:; connect-src 'self'",
+					],
+				},
+			});
+		});
+	}
+
 	// Route outbound fetch through the saved proxy (if enabled) before the agent makes any request.
 	applyProxy(loadProxyConfig());
 	registerWindowControls();

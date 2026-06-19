@@ -10,11 +10,19 @@ describe("isRefusalTitle", () => {
 		expect(isRefusalTitle("Unable to access the file")).toBe(true);
 	});
 
+	it("flags 'not able to' / spaced 'can not' refusals (ERR-7)", () => {
+		expect(isRefusalTitle("I'm not able to see the image")).toBe(true);
+		expect(isRefusalTitle("I can not view this")).toBe(true);
+		expect(isRefusalTitle("I am not able to read the file")).toBe(true);
+		expect(isRefusalTitle("Not able to read the document")).toBe(true);
+	});
+
 	it("does NOT flag legitimate titles that merely contain similar words", () => {
 		expect(isRefusalTitle("如何解决无法登录")).toBe(false);
 		expect(isRefusalTitle("图片渲染功能介绍")).toBe(false);
 		expect(isRefusalTitle("Refactor the image loader")).toBe(false);
 		expect(isRefusalTitle("Sortable table component")).toBe(false);
+		expect(isRefusalTitle("无法被打败的算法")).toBe(false);
 	});
 });
 
