@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Verify cross-layer integrity (setActive await chain, send target id, approval+notify routing, SEC-2 path guard) AND apply the AI-reviewer verification rule: these fixes originate from an AI audit, so confirm each against the real code and budget for false positives."}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Project code standards / forbidden patterns for the renderer-side changes (useSessions, App, UserBubble, SessionSidebar, CSS tokens)."}
