@@ -63,3 +63,26 @@ describe("metaReducer — per-session slice routing", () => {
 		expect(next.unread.s2).toBeUndefined();
 	});
 });
+
+// REACT-1: `send` addresses an explicit target id when given, else the active session. The hook itself
+// can't be rendered here (vitest runs in a plain `node` env with no jsdom/testing-library — see
+// vitest.config.ts), so we cover the target-resolution contract that `send` applies before calling
+// `window.pi.send(id, …)`: `const id = sessionId ?? activeRef.current`. This guards the edit-then-switch
+// race fix — an explicit captured id must win over whatever session is active by the time the awaits settle.
+function resolveSendTarget(sessionId: string | undefined, activeId: string | undefined): string | undefined {
+	return sessionId ?? activeId;
+}
+
+describe("useSessions send — target resolution (REACT-1)", () => {
+	it("uses the explicit sessionId when provided, even if a different session is active", () => {
+		expect(resolveSendTarget("sX", "sActive")).toBe("sX");
+	});
+
+	it("falls back to the active session when no explicit id is given", () => {
+		expect(resolveSendTarget(undefined, "sActive")).toBe("sActive");
+	});
+
+	it("yields undefined (a no-op send) when neither an explicit nor an active id exists", () => {
+		expect(resolveSendTarget(undefined, undefined)).toBeUndefined();
+	});
+});

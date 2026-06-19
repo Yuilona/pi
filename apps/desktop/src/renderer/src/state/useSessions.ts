@@ -111,8 +111,8 @@ export function useSessions() {
 		[setActive],
 	);
 
-	const send = useCallback((text: string, images?: ImageAttachmentDto[]) => {
-		const id = activeRef.current;
+	const send = useCallback((text: string, images?: ImageAttachmentDto[], sessionId?: string) => {
+		const id = sessionId ?? activeRef.current;
 		if (!id) return;
 		void window.pi.send(id, text, images);
 	}, []);

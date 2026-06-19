@@ -30,11 +30,21 @@ export const UserBubble = memo(function UserBubble({
 	const [editing, setEditing] = useState(false);
 	const [draft, setDraft] = useState("");
 	const taRef = useRef<HTMLTextAreaElement>(null);
+	const editBtnRef = useRef<HTMLButtonElement>(null);
+	// Was the editor open last render? Used to restore focus to the trigger only on a true open→close transition.
+	const wasEditing = useRef(false);
 
 	// Leave edit mode if this message stops being the editable one (a new turn started, streaming began…).
 	useEffect(() => {
 		if (!canEdit) setEditing(false);
 	}, [canEdit]);
+
+	// Restore focus to the "Edit and resend" trigger when the in-place editor closes, so keyboard focus
+	// isn't dropped to the document body after Esc/Cancel/save.
+	useEffect(() => {
+		if (wasEditing.current && !editing) editBtnRef.current?.focus();
+		wasEditing.current = editing;
+	}, [editing]);
 
 	// Grow the editor to fit its content, capped at half the viewport — beyond that it scrolls internally,
 	// so even a very long message stays comfortable to read and edit in place.
@@ -142,6 +152,7 @@ export const UserBubble = memo(function UserBubble({
 					{text && <CopyButton getText={() => text} label="Copy message" />}
 					{canEdit && (
 						<button
+							ref={editBtnRef}
 							type="button"
 							className="icon-btn msg-act"
 							onClick={openEditor}
