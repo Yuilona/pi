@@ -69,9 +69,7 @@ export function registerAgentBridge(getWindow: () => BrowserWindow | null, cwd: 
 	ipcMain.handle(IPC.closeSession, (_e, sessionId: string) => pool.closeSession(sessionId));
 	ipcMain.handle(IPC.deleteSession, (_e, sessionId: string) => pool.deleteSession(sessionId));
 	ipcMain.handle(IPC.deleteSessionFile, (_e, path: string) => pool.deleteSessionByPath(path));
-	ipcMain.handle(IPC.setActive, (_e, sessionId: string | null) => {
-		pool.setActive(sessionId);
-	});
+	ipcMain.handle(IPC.setActive, (_e, sessionId: string | null) => pool.setActive(sessionId));
 
 	// app-global
 	ipcMain.handle(IPC.setApiKey, (_e, provider: string, key: string) => pool.setApiKey(provider, key));

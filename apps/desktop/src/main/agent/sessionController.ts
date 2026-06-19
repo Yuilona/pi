@@ -25,6 +25,7 @@ import { createApprovalExtensionFactory } from "./approval.js";
 import type { AuthBundle } from "./auth.js";
 import { hasAnyModel } from "./auth.js";
 import { makeIdFactory, mapEvent, mapTranscript } from "./mappers.js";
+import { createSerializer } from "./serialize.js";
 import { assistantText, cleanTitle, firstUserText, isRefusalTitle } from "./titleUtils.js";
 
 // Full coding toolset. bash/edit/write are gated by the approval extension; read-only tools auto-run.
@@ -78,7 +79,13 @@ export class SessionController {
 	private currentSessionFile: string | undefined;
 	private currentModel: ModelInfoDto | undefined;
 	private thinkingLevel: ThinkingLevelDto = "medium";
+	// True once the user has explicitly picked a thinking level (so it's pushed onto a rebuilt session
+	// instead of being overwritten by the persisted session's level).
+	private thinkingExplicit = false;
 	private parked = false;
+	// True once the controller is disposed: a post-dispose build/ensure becomes a no-op so a queued rebuild
+	// can never resurrect a removed controller. (park() must NOT set this — a parked controller is revivable.)
+	private disposed = false;
 
 	private pendingApprovals = new Map<string, { toolName: string; resolve: (allow: boolean) => void }>();
 	private approvalSeq = 0;
@@ -88,7 +95,7 @@ export class SessionController {
 	private flushPendingUpdate: (() => void) | undefined;
 	// Serializes lifecycle mutations for THIS session (build/teardown/prompt-setup/edit) so they can't
 	// interleave; the turn itself runs OUTSIDE the lock so a long stream never blocks the session.
-	private opChain: Promise<unknown> = Promise.resolve();
+	private runExclusive = createSerializer();
 
 	constructor(
 		readonly id: string,
@@ -132,17 +139,9 @@ export class SessionController {
 		return this.pendingApprovals.size > 0;
 	}
 
-	private runExclusive<T>(fn: () => Promise<T>): Promise<T> {
-		const next = this.opChain.then(fn, fn);
-		this.opChain = next.then(
-			() => {},
-			() => {},
-		);
-		return next;
-	}
-
 	// ---- build / teardown / park ----
 	private async buildSession(sessionManager?: SessionManager): Promise<void> {
+		if (this.disposed) return;
 		const resourceLoader = new DefaultResourceLoader({
 			cwd: this.cwd,
 			agentDir: getAgentDir(),
@@ -168,7 +167,12 @@ export class SessionController {
 		this.currentModel = model
 			? { provider: model.provider, id: model.id, label: model.name, available: true }
 			: undefined;
-		this.thinkingLevel = (session.thinkingLevel as ThinkingLevelDto) ?? this.thinkingLevel;
+		if (this.thinkingExplicit) {
+			// The user picked a level (possibly while parked) — push it onto the rebuilt session.
+			session.setThinkingLevel(this.thinkingLevel);
+		} else {
+			this.thinkingLevel = (session.thinkingLevel as ThinkingLevelDto) ?? this.thinkingLevel;
+		}
 
 		const idFactory = makeIdFactory();
 		let pendingUpdate: IpcAgentEvent | null = null;
@@ -226,6 +230,7 @@ export class SessionController {
 
 	/** Ensure a live AgentSession exists, resuming from the remembered file when parked. */
 	private async ensureSession(): Promise<void> {
+		if (this.disposed) return;
 		if (this.session) return;
 		if (!hasAnyModel(this.auth)) throw new Error("No model configured. Add a provider API key in Settings.");
 		if (this.parked && this.currentSessionFile) {
@@ -242,6 +247,7 @@ export class SessionController {
 	/** Bring this controller live (used by the pool on create / unpark). Resumes from `file` if given. */
 	async ensureLive(file?: string): Promise<void> {
 		return this.runExclusive(async () => {
+			if (this.disposed) return;
 			if (this.session) return;
 			if (file) {
 				this.currentSessionFile = file;
@@ -349,9 +355,14 @@ export class SessionController {
 			if (!session || session.isStreaming) return null;
 			const target = session.getUserMessagesForForking().at(-1);
 			if (!target) return null;
-			const { editorText, cancelled } = await session.navigateTree(target.entryId, { summarize: false });
-			if (cancelled) return null;
-			return editorText ?? target.text ?? "";
+			try {
+				const { editorText, cancelled } = await session.navigateTree(target.entryId, { summarize: false });
+				if (cancelled) return null;
+				return editorText ?? target.text ?? "";
+			} catch (err) {
+				this.deps.onEvent({ type: "error", message: err instanceof Error ? err.message : String(err) });
+				return null;
+			}
 		});
 	}
 
@@ -406,15 +417,25 @@ export class SessionController {
 
 	async setModel(provider: string, id: string): Promise<void> {
 		return this.runExclusive(async () => {
+			if (this.disposed) return;
 			const model = this.auth.modelRegistry.find(provider, id);
 			if (!model) return;
-			this.currentModel = { provider: model.provider, id: model.id, label: model.name, available: true };
-			await this.ensureSession();
-			await this.session?.setModel(model);
+			try {
+				await this.ensureSession();
+				await this.session?.setModel(model);
+				// Re-read what was actually applied (ensureSession may have rebuilt and overwritten currentModel).
+				const m = this.session?.model;
+				this.currentModel = m
+					? { provider: m.provider, id: m.id, label: m.name, available: true }
+					: { provider: model.provider, id: model.id, label: model.name, available: true };
+			} catch (err) {
+				this.deps.onEvent({ type: "error", message: err instanceof Error ? err.message : String(err) });
+			}
 		});
 	}
 
 	setThinking(level: ThinkingLevelDto): void {
+		this.thinkingExplicit = true;
 		this.thinkingLevel = level;
 		this.session?.setThinkingLevel(level);
 	}
@@ -428,10 +449,6 @@ export class SessionController {
 	/** True once the user has actually sent something (drives whether this session shows in the sidebar). */
 	hasUserMessage(): boolean {
 		return (this.session?.messages ?? []).some((m) => (m as { role?: string }).role === "user");
-	}
-
-	cwdPath(): string {
-		return this.cwd;
 	}
 
 	summary(): SessionSummaryDto {
@@ -450,6 +467,7 @@ export class SessionController {
 	}
 
 	dispose(): void {
+		this.disposed = true;
 		this.teardownRuntime();
 		this.currentSessionFile = undefined;
 	}
