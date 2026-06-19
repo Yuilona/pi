@@ -70,6 +70,15 @@ polish + `electron-builder` packaging.
 - **A skill is invoked by the model `read`ing its SKILL.md** (see coding-agent `formatSkillsForPrompt`);
   the SDK's `session.prompt()` already expands `/prompt-template` and `/skill:name` on send.
 - Before building a pi feature, check `packages/coding-agent/examples/extensions` for an existing pattern.
+- **Main-process session lifecycle ops must serialize + await + funnel errors — never fire-and-forget.**
+  `setActive`/`openSession`/`ensureLive`/`setModel` route through the per-class `runExclusive` serializer
+  (`agent/serialize.ts`), `await` the (re)build, and emit `{type:"error"}` to the renderer on failure. A
+  `void controller.ensureLive(...)` *outside* the pool lock was the root cause of a 5-in-1 audit bug (live cap
+  defeated, errors swallowed as unhandled rejections, blank-transcript race, a disposed controller rebuilt).
+  A disposed `SessionController` carries a `disposed` flag that no-ops any late rebuild.
+- **vitest `vi.mock(factory)` is hoisted above all top-level code** — referencing a class/const declared later
+  throws "Cannot access X before initialization" (TDZ). Put the mock's helpers (fake classes, shared mutable
+  test state) inside `vi.hoisted(() => ({ ... }))` and reference them via that result (see `sessionPool.test.ts`).
 
 ## Environment & working norms (Windows / CN)
 
