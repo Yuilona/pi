@@ -50,7 +50,7 @@ export function cleanTitle(raw: string): string {
  * title that merely contains them.
  */
 export function isRefusalTitle(title: string): boolean {
-	return /(^|[\s，,、])(抱歉|对不起|很抱歉)|我(无法|不能|看不到|没办法)|无法(读取|查看|识别|处理|访问|打开|显示)|\b(sorry|i\s*(?:can'?t|cannot|am\s+unable|'?m\s+unable))\b|unable\s+to\s+(?:read|see|view|access|process|open|display)/i.test(
+	return /(^|[\s，,、])(抱歉|对不起|很抱歉)|我(无法|不能|看不到|没办法)|无法(读取|查看|识别|处理|访问|打开|显示)|\b(sorry|i\s*(?:can'?t|can\s+not|cannot|am\s+unable|'?m\s+unable|am\s+not\s+able|'?m\s+not\s+able))\b|(?:un|not\s+)able\s+to\s+(?:read|see|view|access|process|open|display)/i.test(
 		title,
 	);
 }
