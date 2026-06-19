@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { getAgentDir, SessionManager, SettingsManager } from "@earendil-works/pi-coding-agent";
 import type {
 	ApprovalDecision,
@@ -27,11 +27,20 @@ import {
 	persistApiKey,
 	removeApiKey,
 } from "./auth.js";
+import { createSerializer } from "./serialize.js";
 import { projectName, SessionController } from "./sessionController.js";
 
 /** Max concurrently-LIVE sessions (each = a model context + subscription in memory). Beyond this the pool
  * parks the least-recently-used IDLE session; a running session is never parked. */
 const MAX_LIVE = 6;
+
+/** True iff `p` resolves to `root` itself or a path nested inside it. Confines renderer-supplied paths to
+ * pi's sessions dir before any destructive `rmSync` / open. Exported for unit testing. */
+export function isInSessionsDir(p: string, root: string): boolean {
+	const base = resolve(root);
+	const r = resolve(p);
+	return r === base || r.startsWith(base + sep);
+}
 
 export interface PoolDeps {
 	/** Forward an agent event to the renderer, tagged with its session id. */
@@ -58,7 +67,7 @@ export class SessionPool {
 	private mode: PermissionMode = "ask";
 	private globalSettings: SettingsManager;
 	// Serializes pool map mutations (create/open/park/delete) so concurrent ones can't race the map.
-	private poolLock: Promise<unknown> = Promise.resolve();
+	private runExclusive = createSerializer();
 
 	constructor(
 		private readonly deps: PoolDeps,
@@ -68,22 +77,13 @@ export class SessionPool {
 		this.globalSettings = SettingsManager.create(appDir);
 	}
 
-	private runExclusive<T>(fn: () => Promise<T>): Promise<T> {
-		const next = this.poolLock.then(fn, fn);
-		this.poolLock = next.then(
-			() => {},
-			() => {},
-		);
-		return next;
-	}
-
 	// ---- controller factory + event routing ----
 	private createController(cwd: string): SessionController {
 		this.seq += 1;
 		const id = `s${this.seq}`;
 		const c = new SessionController(id, this.auth, cwd, {
 			onEvent: (e) => this.onControllerEvent(id, e),
-			onApproval: (req) => this.deps.forwardApproval(id, req),
+			onApproval: (req) => this.onControllerApproval(id, req),
 			getMode: () => this.mode,
 		});
 		this.controllers.set(id, c);
@@ -99,8 +99,23 @@ export class SessionPool {
 		}
 	}
 
+	private onControllerApproval(id: string, req: ApprovalRequest): void {
+		this.deps.forwardApproval(id, req);
+		// A background session hitting an approval gate fires an OS notification (the active session keeps its
+		// inline ApprovalDialog with no duplicate toast).
+		if (id !== this.activeId) {
+			this.deps.notify(id, "approval", this.controllers.get(id)?.summary().title ?? "Chat");
+		}
+	}
+
 	private touch(id: string): void {
 		this.lastActive.set(id, ++this.tick);
+	}
+
+	/** pi's sessions dir (the dir SessionManager.listAll() enumerates) — the only tree destructive IPC paths
+	 * may touch. */
+	private sessionsRoot(): string {
+		return join(getAgentDir(), "sessions");
 	}
 
 	/** Park the least-recently-used idle, non-running, non-active controller when at the live cap. Never parks
@@ -156,7 +171,16 @@ export class SessionPool {
 		return this.runExclusive(async () => {
 			const existing = [...this.controllers.values()].find((c) => c.sessionFile() === path);
 			if (existing) {
-				if (existing.isParked()) await existing.ensureLive(path);
+				if (existing.isParked()) {
+					try {
+						await existing.ensureLive(path);
+					} catch (e) {
+						this.deps.forward(existing.id, {
+							type: "error",
+							message: `Couldn't resume session: ${e instanceof Error ? e.message : String(e)}`,
+						});
+					}
+				}
 				this.touch(existing.id);
 				return existing.id;
 			}
@@ -178,14 +202,29 @@ export class SessionPool {
 		return this.controllers.get(sessionId);
 	}
 
-	setActive(sessionId: string | null): void {
+	async setActive(sessionId: string | null): Promise<void> {
 		this.activeId = sessionId ?? undefined;
-		if (sessionId) {
-			this.touch(sessionId);
-			// Focusing a parked session brings it back to life (resumes from its file).
-			const c = this.controllers.get(sessionId);
-			if (c?.isParked()) void c.ensureLive(c.sessionFile());
-		}
+		if (!sessionId) return;
+		this.touch(sessionId);
+		const c = this.controllers.get(sessionId);
+		if (!c?.isParked()) return;
+		// Focusing a parked session brings it back to life (resumes from its file). Serialize on the pool lock
+		// against close/delete, enforce the live cap first, await the rebuild so the renderer's getTranscript
+		// sees it, and surface a failed resume as an error DTO instead of an unhandled rejection.
+		await this.runExclusive(async () => {
+			// Re-check under the lock: a concurrent close/delete may have removed it.
+			const cur = this.controllers.get(sessionId);
+			if (!cur?.isParked()) return;
+			this.parkForCapacity();
+			try {
+				await cur.ensureLive(cur.sessionFile());
+			} catch (e) {
+				this.deps.forward(sessionId, {
+					type: "error",
+					message: `Couldn't resume session: ${e instanceof Error ? e.message : String(e)}`,
+				});
+			}
+		});
 	}
 
 	async closeSession(sessionId: string): Promise<void> {
@@ -210,7 +249,7 @@ export class SessionPool {
 				this.controllers.delete(sessionId);
 				this.lastActive.delete(sessionId);
 			}
-			if (file) {
+			if (file && isInSessionsDir(file, this.sessionsRoot())) {
 				try {
 					rmSync(file, { force: true });
 				} catch (e) {
@@ -225,6 +264,8 @@ export class SessionPool {
 	async deleteSessionByPath(path: string): Promise<void> {
 		const live = [...this.controllers.values()].find((c) => c.sessionFile() === path);
 		if (live) return this.deleteSession(live.id);
+		// Confine the renderer-supplied path to pi's sessions dir before rm (SEC-2).
+		if (!isInSessionsDir(path, this.sessionsRoot())) return;
 		try {
 			rmSync(path, { force: true });
 		} catch {
@@ -370,10 +411,10 @@ export class SessionPool {
 			await this.warmActiveIfNeeded();
 			return true;
 		} catch (e) {
-			this.deps.forward(this.activeId ?? "s0", {
-				type: "error",
-				message: e instanceof Error ? e.message : String(e),
-			});
+			// Surface to the active session only (no fabricated "s0" id); the Settings UI also sees the false.
+			if (this.activeId) {
+				this.deps.forward(this.activeId, { type: "error", message: e instanceof Error ? e.message : String(e) });
+			}
 			return false;
 		}
 	}
@@ -438,10 +479,10 @@ export class SessionPool {
 			await this.warmActiveIfNeeded();
 			return true;
 		} catch (e) {
-			this.deps.forward(this.activeId ?? "s0", {
-				type: "error",
-				message: e instanceof Error ? e.message : String(e),
-			});
+			// Surface to the active session only (no fabricated "s0" id); the Settings UI also sees the false.
+			if (this.activeId) {
+				this.deps.forward(this.activeId, { type: "error", message: e instanceof Error ? e.message : String(e) });
+			}
 			return false;
 		}
 	}
@@ -463,5 +504,7 @@ export class SessionPool {
 	dispose(): void {
 		for (const c of this.controllers.values()) c.dispose();
 		this.controllers.clear();
+		this.lastActive.clear();
+		this.activeId = undefined;
 	}
 }
