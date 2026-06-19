@@ -269,12 +269,10 @@ export function App() {
 	}, []);
 
 	const cycleMode = useCallback(() => {
-		setMode((prev) => {
-			const next = MODE_ORDER[(MODE_ORDER.indexOf(prev) + 1) % MODE_ORDER.length];
-			void window.pi.setMode(next);
-			return next;
-		});
-	}, []);
+		const next = MODE_ORDER[(MODE_ORDER.indexOf(mode) + 1) % MODE_ORDER.length];
+		setMode(next);
+		void window.pi.setMode(next);
+	}, [mode]);
 
 	// Cycle the permission mode with Shift+Tab from anywhere in the chat view (not only the composer).
 	useEffect(() => {
@@ -355,7 +353,7 @@ export function App() {
 			const original = await window.pi.editLastMessage(id);
 			if (original == null) return;
 			await loadTranscript(id);
-			send(trimmed);
+			send(trimmed, undefined, id);
 		},
 		[state.streaming, loadTranscript, send],
 	);
@@ -482,7 +480,9 @@ export function App() {
 						/>
 					)}
 
-					{activeApproval && <ApprovalDialog request={activeApproval} onResolve={resolveApproval} />}
+					{activeApproval && (
+						<ApprovalDialog key={activeApproval.id} request={activeApproval} onResolve={resolveApproval} />
+					)}
 					{viewerSrc && <ImageViewer src={viewerSrc} onClose={() => setViewerSrc(null)} />}
 				</div>
 			</ImageViewerContext.Provider>

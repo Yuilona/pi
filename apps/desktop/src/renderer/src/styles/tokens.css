@@ -35,6 +35,7 @@
 	--focus: #3898ec; /* Focus Blue — the only cool color, inputs only */
 	--ink: #141413; /* warm near-black — hover-darken target + scrim base */
 	--scrim: rgba(20, 20, 19, 0.4); /* modal backdrop dim */
+	--scrim-strong: rgba(20, 20, 19, 0.82); /* heavier scrim — lightbox/media backdrop (image must read clearly) */
 
 	/* ---- Tool-state tints (warm) ---- */
 	--tool-pending: #f1efe6;
@@ -81,6 +82,7 @@
 	--focus: #3898ec;
 	--ink: #141413; /* warm near-black — hover-darken target + scrim base */
 	--scrim: rgba(0, 0, 0, 0.55); /* darker on the already-dark canvas so backdrops still read */
+	--scrim-strong: rgba(0, 0, 0, 0.82); /* heavier scrim — lightbox/media backdrop (image must read clearly) */
 
 	--tool-pending: #2a2a28;
 	--tool-success: #252c25;

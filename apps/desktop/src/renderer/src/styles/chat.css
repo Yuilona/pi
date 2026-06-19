@@ -99,7 +99,7 @@
 .bubble-edit-hint {
 	margin-right: auto;
 	font-size: var(--fs-overline);
-	color: var(--text-3);
+	color: var(--text-2);
 }
 .bubble-edit-btn {
 	padding: 6px 14px;
@@ -581,7 +581,7 @@
 	z-index: 100;
 	overflow: hidden;
 	border: none;
-	background: rgba(20, 20, 19, 0.82);
+	background: var(--scrim-strong);
 	animation: lightbox-in 0.16s var(--ease);
 	touch-action: none;
 	user-select: none;

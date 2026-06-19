@@ -198,9 +198,21 @@ function ProjectGroup({
 					>
 						<button type="button" className="sess" onClick={() => onSelect(s)}>
 							<div className="sess-title">
-								{info?.running && <span className="sess-spin" title="Running" />}
-								{!info?.running && info?.unread && <span className="sess-unread" title="New activity" />}
-								{info?.pendingApproval && <span className="sess-approval" title="Approval needed" />}
+								{info?.running && (
+									<span className="sess-spin" title="Running">
+										<span className="sr-only">Running</span>
+									</span>
+								)}
+								{!info?.running && info?.unread && (
+									<span className="sess-unread" title="New activity">
+										<span className="sr-only">Unread</span>
+									</span>
+								)}
+								{info?.pendingApproval && (
+									<span className="sess-approval" title="Approval needed">
+										<span className="sr-only">Needs approval</span>
+									</span>
+								)}
 								<span className="sess-title-text">{s.title}</span>
 							</div>
 							<div className="sess-meta">
