@@ -206,10 +206,12 @@ Each requirement is independently shippable; ordering hints are in **Dependencie
 
 ## Dependencies / sequencing
 
-- **None hard-blocking.** R5 pairs with the extensibility child (AGENT-1) but does not depend on it. R9 carries a
-  small upstream SDK change; sequence it after a green baseline so the repo `dist` rebuild is isolated. R1/R2
-  share an HTML-export step (R2 builds on R1's export plumbing) — do R1 first. R3 is the heaviest (interactive
-  callback bridge) and can land independently.
+**Roadmap wave: Wave 3 (of 4)** — recommended execution slot ~#11 of 14.
+
+> The authoritative execution ordering lives here and in the parent **06-27-desktop-roadmap** prd's 4-wave plan. Trellis parent/child tree position is NOT a dependency; only the relations stated below are binding.
+
+- **Do after (soft):** 06-27-extensibility (AGENT-1) — specifically for SDK-7 (per-tool enable/disable), which builds on dropping the fixed allowlist. The other items (export/share, OAuth, memory editor, manual bash, scoped models, compact opts, per-project defaults) are independent.
+- **Blocks / do before:** nothing.
 
 ## Out of scope
 

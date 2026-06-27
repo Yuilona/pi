@@ -138,9 +138,13 @@ under test is already correct; the goal is to lock it in and make future hook te
 
 ## Dependencies / sequencing
 
-None. This is pure test/devex and touches no shared product file; it can land independently of the other
-06-27 children. (It does, however, make REACT-1-style hook regressions catchable, so it is a sensible early
-land.)
+**Roadmap wave: Wave 3 (of 4)** — recommended execution slot ~#13 of 14 (but can be pulled forward anytime).
+
+> The authoritative execution ordering lives here and in the parent **06-27-desktop-roadmap** prd's 4-wave plan. Trellis parent/child tree position is NOT a dependency; only the relations stated below are binding.
+
+- **Do after:** nothing — independent; pull it forward if you want to lock in the audited lifecycle invariants sooner.
+- **Blocks / do before:** nothing.
+- **Note:** PERF-10 (pool/controller lifecycle integration test) is the one genuine debt item; PERF-9 (jsdom + testing-library) enables real hook/reducer tests.
 
 ## Out of scope
 

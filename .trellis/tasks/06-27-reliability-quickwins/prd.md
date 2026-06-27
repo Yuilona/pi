@@ -200,9 +200,13 @@ pi-free renderer boundary.
 
 ## Dependencies / sequencing
 
-- R1 (retry resend path) is reused by R7 (continue interrupted turn); land R1's resend helper first or
-  factor it so R7 can call it. R2 (classification) pairs with R1 in the same banner change.
-- Otherwise independent; each Rn is separately verifiable. No dependency on sibling roadmap children.
+**Roadmap wave: Wave 1 (of 4)** — recommended execution slot ~#3 of 14.
+
+> The authoritative execution ordering lives here and in the parent **06-27-desktop-roadmap** prd's 4-wave plan. Trellis parent/child tree position is NOT a dependency; only the relations stated below are binding.
+
+- **Do after:** nothing — freely orderable within Wave 1.
+- **Blocks / do before:** nothing.
+- **Why Wave 1:** a batch of small, low-risk reliability wins (retry, draft persistence, single-instance lock, recovery, fresh-chat-on-empty, openSession guard) with strong felt quality.
 
 ## Out of scope
 

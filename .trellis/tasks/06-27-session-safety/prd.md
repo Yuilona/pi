@@ -147,10 +147,14 @@ code-execution safe.
 
 ## Dependencies / sequencing
 
-None — both findings are self-contained in `apps/desktop` main + the IPC/renderer wiring and depend only on
-already-shipped SDK symbols. R1 (S) is a good warm-up before R2 (L); they touch overlapping files
-(`ipc.ts`, `bridge.ts`, `preload`, `sessionController.ts`, `App.tsx`) so do them in one branch to avoid
-merge churn. This is a child of `06-27-desktop-roadmap`; sequence against siblings per the roadmap.
+**Roadmap wave: Wave 1 (of 4)** — recommended execution slot ~#2 of 14 (the per-session-mode half); the project-trust gate half may slip to Wave 2.
+
+> The authoritative execution ordering lives here and in the parent **06-27-desktop-roadmap** prd's 4-wave plan. Trellis parent/child tree position is NOT a dependency; only the relations stated below are binding.
+
+- **Do after:** nothing — freely orderable within Wave 1.
+- **Blocks / do before:** nothing hard.
+- **Pairs with:** 06-27-tabs-split-view (each tab should show its own per-session permission mode).
+- **Note:** R1 per-session permission mode is the Wave-1 quick part (effort S, pure plumbing); R2 project-trust gate is heavier (effort L) and can land in Wave 2 within this same task.
 
 ## Out of scope
 

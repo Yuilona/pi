@@ -130,10 +130,13 @@ The plumbing chain is `PiApi.send` (ipc.ts:268) → preload (preload/index.ts:22
 
 ## Dependencies / sequencing
 
-None hard. This is **Wave 1** in the parent roadmap (06-27-desktop-roadmap, prd.md:45) and is mostly plumbing
-on top of the existing concurrent-sessions pool; it builds on `06-18-concurrent-sessions` (the per-session
-`SessionController`/`SessionPool` and the sessionId-tagged event stream) which is already shipped. It closes the
-deferred CONC-5 finding.
+**Roadmap wave: Wave 1 (of 4)** — recommended execution slot ~#1 of 14.
+
+> The authoritative execution ordering lives here and in the parent **06-27-desktop-roadmap** prd's 4-wave plan. Trellis parent/child tree position is NOT a dependency; only the relations stated below are binding.
+
+- **Do after:** nothing — freely orderable within Wave 1.
+- **Blocks / do before:** nothing hard.
+- **Why Wave 1:** the single biggest interaction gap vs the TUI, low risk, fully SDK-supported (mostly dark plumbing). Highest daily-feel payoff.
 
 ## Out of scope
 

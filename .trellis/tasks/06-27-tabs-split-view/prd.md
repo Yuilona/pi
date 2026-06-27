@@ -149,11 +149,13 @@ slices side by side. No new pi capability is required (`sdkSupport: pure-ui`).
 
 ## Dependencies / sequencing
 
-- Pairs with **06-27-session-safety** (per-session permission mode): once mode is per-session, each tab /
-  pane header should show its own mode. Tabs can ship first with a global mode and adopt per-tab mode when
-  session-safety lands; not a hard blocker.
-- Builds directly on the already-shipped concurrent-session engine
-  (`06-18-concurrent-sessions`, `06-18-desktop-audit-fixes`). No sibling must precede this child.
+**Roadmap wave: Wave 3 (of 4)** — recommended execution slot ~#9 of 14.
+
+> The authoritative execution ordering lives here and in the parent **06-27-desktop-roadmap** prd's 4-wave plan. Trellis parent/child tree position is NOT a dependency; only the relations stated below are binding.
+
+- **Do after (soft):** 06-27-session-safety (per-session permission mode) — so each tab can show its own mode badge.
+- **Blocks / do before:** nothing.
+- **Why Wave 3:** the concurrency engine already exists; this is a renderer composition rework (L), best after the per-session-mode safety net.
 
 ## Out of scope
 

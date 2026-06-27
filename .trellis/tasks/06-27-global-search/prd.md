@@ -149,8 +149,13 @@ file per keystroke).
 
 ## Dependencies / sequencing
 
-None hard. If a sibling child reworks `SessionInfoDto` or the `listSessions` payload, prefer to land that
-first so the `SearchHitDto` extension is built on the final shape; otherwise this is self-contained.
+**Roadmap wave: Wave 2 (of 4)** — recommended execution slot ~#6 of 14.
+
+> The authoritative execution ordering lives here and in the parent **06-27-desktop-roadmap** prd's 4-wave plan. Trellis parent/child tree position is NOT a dependency; only the relations stated below are binding.
+
+- **Do after:** nothing hard.
+- **Blocks / do before:** nothing.
+- **Why Wave 2:** navigation-at-scale; independent and fully SDK-supported (listAll already carries the body text).
 
 ## Out of scope
 

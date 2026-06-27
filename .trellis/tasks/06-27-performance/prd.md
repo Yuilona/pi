@@ -212,11 +212,13 @@ mapper changes, so the pi-free boundary and the `ipc.ts` DTO contract are untouc
 
 ## Dependencies / sequencing
 
-- R1 (PERF-2) is a prerequisite for R2 (PERF-1) landing as a real entry-chunk reduction — do R1 first, then R2.
-- The rest are independent of each other; sequence cheapest-first (R6, R9, R1→R2, R8) before the deeper
-  refactors (R3, R4, R5, R7).
-- Lower priority than the capability/safety parity siblings of `06-27-desktop-roadmap`; schedule after those
-  unless a measured regression argues otherwise.
+**Roadmap wave: Wave 3 (of 4)** — recommended execution slot ~#12 of 14.
+
+> The authoritative execution ordering lives here and in the parent **06-27-desktop-roadmap** prd's 4-wave plan. Trellis parent/child tree position is NOT a dependency; only the relations stated below are binding.
+
+- **Do after:** nothing — can run anytime; measure-then-optimize.
+- **Blocks / do before:** nothing.
+- **Why Wave 3:** real but lower priority than capability/safety parity; PERF-2 (vendor split) is the one-line prerequisite for PERF-1 (code-split) within this task.
 
 ## Out of scope
 

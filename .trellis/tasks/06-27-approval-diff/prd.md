@@ -129,9 +129,13 @@ Today the approval gate hands the renderer only the raw tool input, and the dial
 
 ## Dependencies / sequencing
 
-- None hard. This is self-contained (one DTO field + one compute call + one renderer branch). If a sibling
-  child also touches `packages/coding-agent/src/index.ts` exports, coordinate the single barrel edit /
-  `dist` rebuild to avoid a merge churn, but there is no ordering requirement.
+**Roadmap wave: Wave 2 (of 4)** — recommended execution slot ~#5 of 14.
+
+> The authoritative execution ordering lives here and in the parent **06-27-desktop-roadmap** prd's 4-wave plan. Trellis parent/child tree position is NOT a dependency; only the relations stated below are binding.
+
+- **Do after:** nothing hard (independent of Wave 1).
+- **Blocks / do before:** nothing.
+- **Note:** needs a small pi-SDK public re-export (the diff-compute helper is not in the package barrel) OR re-deriving the diff in main — see this prd's Design hints.
 
 ## Out of scope
 

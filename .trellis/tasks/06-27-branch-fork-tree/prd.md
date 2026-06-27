@@ -153,12 +153,13 @@ is pi-free and speaks only `ipc.ts` DTOs; each new capability = a new channel + 
 
 ## Dependencies / sequencing
 
-- **Generalizes the archived `06-18-message-actions` edit feature** — it changes that feature's renderer
-  gate and main entrypoint, so it should land on top of the current edit code (which it does).
-- Internal order: R2 (branch-point list) first (it unblocks the renderer's entry-id mapping), then R1
-  (rewind) and R3 (fork) on top, then R4 (the UI that consumes all three).
-- No hard dependency on a sibling child. Loosely related to `06-27-tabs-split-view` (#6) — a fork opening a
-  new session is nicer with tabs — but does not require it.
+**Roadmap wave: Wave 3 (of 4)** — recommended execution slot ~#8 of 14.
+
+> The authoritative execution ordering lives here and in the parent **06-27-desktop-roadmap** prd's 4-wave plan. Trellis parent/child tree position is NOT a dependency; only the relations stated below are binding.
+
+- **Do after:** nothing hard (generalizes the already-shipped last-message edit; the 06-18-message-actions precedent).
+- **Blocks / do before:** nothing.
+- **Why Wave 3:** high-value but L effort (new IPC channels + a branch/tree picker UI).
 
 ## Out of scope
 

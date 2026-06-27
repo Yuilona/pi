@@ -192,9 +192,13 @@ The `viewPrefs` + `localStorage` pattern for persisted UI prefs already exists
 
 ## Dependencies / sequencing
 
-- None hard. This is Wave-3 in the roadmap (`06-27-desktop-roadmap` prd, line 50). Soft note: UX-4's command
-  palette reuses the same `CommandDto` + `runCommand` surface the composer already has, so it's cleanest after no
-  command-related churn is pending; otherwise the eight findings are independent and can land in any order.
+**Roadmap wave: Wave 3 (of 4)** — recommended execution slot ~#10 of 14.
+
+> The authoritative execution ordering lives here and in the parent **06-27-desktop-roadmap** prd's 4-wave plan. Trellis parent/child tree position is NOT a dependency; only the relations stated below are binding.
+
+- **Do after:** nothing.
+- **Blocks / do before:** nothing.
+- **Note:** a batch of mostly-independent polish items (rename/pin, per-message cost, command palette, themes, tray+hotkey, file DnD, onboarding, sidebar resize) — each individually shippable; pick the highest-felt first.
 
 ## Out of scope
 

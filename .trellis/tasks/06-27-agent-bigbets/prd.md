@@ -184,15 +184,13 @@ New capabilities, per the hard architecture rule, mean new channels + DTOs in
 
 ## Dependencies / sequencing
 
-- **AGENT-7 depends on the extensibility task (`06-27-extensibility`, finding AGENT-1: tool
-  allowlist).** Sequence AGENT-7 *after* that lands — without per-session active-tool control there is
-  no clean way to enable the `subagent` tool.
-- **AGENT-8 depends on SDK-side mode/elicitation work** (a serializable elicitation channel). The
-  desktop half (approval-style IPC round-trip) can be designed in parallel but cannot ship until the
-  SDK prerequisite (or the decision to ship desktop-local structured tools) is resolved.
-- **AGENT-9 depends on an SDK MCP client + ToolDefinition bridge that does not exist.** No desktop
-  work is unblocked until that is built upstream.
-- Otherwise independent of the other roadmap children.
+**Roadmap wave: Wave 4 (of 4)** — recommended execution slot ~#14 of 14 (last; depends on upstream/SDK work).
+
+> The authoritative execution ordering lives here and in the parent **06-27-desktop-roadmap** prd's 4-wave plan. Trellis parent/child tree position is NOT a dependency; only the relations stated below are binding.
+
+- **Do after (HARD):** 06-27-extensibility (AGENT-1, drop the tool allowlist) before AGENT-7 (subagent delegation).
+- **External blockers:** AGENT-9 (MCP) is BLOCKED on upstream pi-SDK MCP support (an MCP client + ToolDefinition bridge must be built at the SDK layer first); AGENT-8 (elicitation/question bridge) needs SDK-side mode/elicitation work. These are not desktop-only tasks.
+- **Why Wave 4:** the most SDK-coupled, highest-effort bucket; sequence it after the extensibility groundwork.
 
 ## Out of scope
 

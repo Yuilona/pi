@@ -51,10 +51,13 @@ The desktop is a pi-citizen harness, but today it pins the toolset to a fixed 7-
 
 ## Dependencies / sequencing
 
-- **AGENT-1 first** — it unblocks AGENT-2 (tool inventory), AGENT-3 (a custom todo tool only loads once customs aren't dropped), and AGENT-10 (toolset narrowing reuses the same activation path).
-- AGENT-3 is independent of AGENT-1 *if* the todos come from a built-in/existing source, but in practice the todo/plan tool is a custom/extension tool, so it benefits from AGENT-1 landing first.
-- AGENT-2 and AGENT-4 are independent of each other (both are Settings manager surfaces).
-- Sibling children of `06-27-desktop-roadmap`: none hard-blocking; coordinate only on `ipc.ts` channel additions to avoid merge churn.
+**Roadmap wave: Wave 2 (of 4)** — recommended execution slot ~#7 of 14.
+
+> The authoritative execution ordering lives here and in the parent **06-27-desktop-roadmap** prd's 4-wave plan. Trellis parent/child tree position is NOT a dependency; only the relations stated below are binding.
+
+- **Do after:** nothing hard.
+- **Blocks / do before (HARD):** this child's AGENT-1 (drop the fixed tool allowlist) is a PREREQUISITE for **06-27-agent-bigbets** (AGENT-7 subagents) and **06-27-sdk-surfacing** (SDK-7 per-tool toggles). Do AGENT-1 before those.
+- **Note:** within this task, AGENT-1 unblocks AGENT-2 (extensions manager) and AGENT-3 (todo/plan panel).
 
 ## Out of scope
 

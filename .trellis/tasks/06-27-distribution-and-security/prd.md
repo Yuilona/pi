@@ -170,13 +170,13 @@ because they are the gate through which every other improvement (this roadmap an
 
 ## Dependencies / sequencing
 
-- **R1 (signing) and R2 (auto-update) first** and together — auto-update without signing still trips
-  SmartScreen, and signing without a `publish:`/updater doesn't deliver fixes; they are the gate for the rest.
-- **R3 (cross-platform)** builds on the R1/R2 config (publish + signing generalize per-OS), so sequence it
-  after R1/R2.
-- **R4 (safeStorage), R5 (sandbox/CSP), R6 (privacy/notify)** are independent of each other and of R1–R3 and
-  can land in any order.
-- Sibling children of `06-27-desktop-roadmap`: **none blocking**; this child is otherwise self-contained.
+**Roadmap wave: Wave 1 (of 4)** — recommended execution slot ~#4 of 14 (signing + auto-update first).
+
+> The authoritative execution ordering lives here and in the parent **06-27-desktop-roadmap** prd's 4-wave plan. Trellis parent/child tree position is NOT a dependency; only the relations stated below are binding.
+
+- **Do after:** nothing.
+- **Blocks / do before:** should precede broad distribution of any LATER child — code signing + auto-update (DIST-1/DIST-2) are the gate to every subsequent improvement actually reaching users.
+- **Note:** within this task, DIST-1/DIST-2 (signing + electron-updater) are Wave 1; the remaining sub-items (DIST-5 safeStorage, DIST-6 cross-platform packaging, DIST-8 sandbox/CSP, DIST-9 telemetry) can land later.
 
 ## Out of scope
 
